@@ -1,0 +1,5 @@
+spaces==0.51.3
+transformers==5.17.0
+accelerate==1.15.0
+compressed-tensors==0.19.0
+torch==2.13.0
