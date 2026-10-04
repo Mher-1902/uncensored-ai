@@ -2,7 +2,14 @@
 
 Publishing creates a publicly accessible HTTPS website. It does not automatically list a page in Google Search or establish a ranking.
 
-This build includes real HTML content before JavaScript, a descriptive title and description, one canonical homepage, `robots.txt`, `sitemap.xml`, and an HTTP 404 page with `noindex`. Chats are never turned into crawlable URLs or persisted pages.
+This build includes real HTML content before JavaScript, descriptive titles and descriptions, consistent Open Graph and Twitter text, one canonical homepage, `robots.txt`, a checked-in `public/sitemap.xml`, and an HTTP 404 page with `noindex`. Chats are never turned into crawlable URLs or persisted pages. API and configuration responses carry `X-Robots-Tag: noindex`; the gateway redirects `/index.html` to `/`.
+
+| Page | Title | Indexing |
+| --- | --- | --- |
+| `/` | Offscript — Temporary AI Chat, No Saved History | Canonical; included in sitemap |
+| Missing URL / `404.html` | Page not found — Offscript | Noindex; excluded from sitemap |
+
+The homepage is the only content page. Do not add error URLs, chat messages, API routes or asset files to the sitemap. There is no fabricated `lastmod`, priority or change frequency. Setting `SITE_ORIGIN` before a build updates the canonical, social URL, sitemap and robots discovery URL together. Both pages preload the brand font and hero image to make them discoverable before CSS finishes loading. No runtime SEO library is added. Run `npm run build`, then `npm run check:seo` to validate the generated files; run `npm test` for HTTP status, indexing headers and canonical redirect coverage.
 
 Canonical homepage: https://offscript-ephemeral.sukiasyanmher7.chatgpt.site/
 

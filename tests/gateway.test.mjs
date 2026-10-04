@@ -48,6 +48,7 @@ test('validates multi-turn history and rejects injected roles/settings',()=>{
 });
 test('streams a reply and erases cache before and after it',async t=>{
   const app=await run(t);const response=await app.send();assert.equal(response.status,200);assert.match(await response.text(),/Hello 🌍/);
+  assert.match(response.headers.get('x-robots-tag'),/noindex/);
   await new Promise(resolve=>setImmediate(resolve));assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
   const request=app.calls.find(c=>c.path==='/v1/chat/completions').body;assert.equal(request.cache_prompt,false);assert.equal(request.id_slot,0);assert.equal(request.chat_template_kwargs.enable_thinking,false);
 });
@@ -69,6 +70,16 @@ test('leaving cancels upstream inference and clears slot',async t=>{
 });
 test('unknown routes return branded HTTP 404, not the chat app',async t=>{
   const app=await run(t);const missing=await fetch(`${app.url}/missing-page`);assert.equal(missing.status,404);assert.match(await missing.text(),/This page went offscript/);
+  assert.match(missing.headers.get('x-robots-tag'),/noindex/);
   const home=await fetch(`${app.url}/`);assert.equal(home.status,200);const html=await home.text();assert.match(html,/Ask\. Think\. Disappear/);assert.match(html,/rel="canonical"/);
   assert.equal((await fetch(`${app.url}/slots`)).status,404);assert.equal((await fetch(`${app.url}/api/anything`)).status,404);
+});
+test('canonical aliases redirect and operational routes stay out of search indexes',async t=>{
+  const app=await run(t);
+  const alias=await fetch(`${app.url}/index.html?source=bookmark`,{redirect:'manual'});
+  assert.equal(alias.status,308);assert.equal(alias.headers.get('location'),'/?source=bookmark');
+  const home=await fetch(`${app.url}/`);assert.equal(home.headers.get('x-robots-tag'),null);
+  for(const route of ['/config.json','/api/health','/api/missing','/404.html']){
+    const response=await fetch(app.url+route);assert.match(response.headers.get('x-robots-tag'),/noindex/);
+  }
 });

@@ -2,7 +2,8 @@ import {build} from 'vite';
 import {readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-const siteOrigin=new URL(process.env.SITE_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site').origin;
+const defaultOrigin='https://offscript-ephemeral.sukiasyanmher7.chatgpt.site';
+const siteOrigin=new URL(process.env.SITE_ORIGIN||defaultOrigin).origin;
 await build();
 await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',emptyOutDir:true}});
 {
@@ -10,8 +11,9 @@ await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',empty
   let html=await readFile('dist/index.html','utf8');
   html=html.replace('<div id="root"></div>',`<div id="root">${render()}</div>`).replaceAll('__SITE_ORIGIN__',siteOrigin);
   await writeFile('dist/index.html',html);
-  await writeFile('dist/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${siteOrigin}/</loc></url></urlset>\n`);
-  await writeFile('dist/robots.txt',`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${siteOrigin}/sitemap.xml\n`);
+  const xmlOrigin=siteOrigin.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+  await writeFile('dist/sitemap.xml',(await readFile('public/sitemap.xml','utf8')).replaceAll(defaultOrigin,xmlOrigin));
+  await writeFile('dist/robots.txt',(await readFile('public/robots.txt','utf8')).replaceAll(defaultOrigin,siteOrigin));
   // A configured public API origin needs both browser permission and server CORS.
   const apiBase=process.env.SITE_API_BASE||JSON.parse(await readFile('dist/config.json','utf8')).apiBase;
   if(apiBase){

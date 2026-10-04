@@ -45,7 +45,7 @@ export function createGateway(options={}){
     });
   }
   function release(){const next=waiting.shift();if(next)next.grant();else active=false}
-  async function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
+  async function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end(JSON.stringify(data))}
   const server=http.createServer(async(req,res)=>{
     let acquired=false,ctrl;res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
@@ -56,6 +56,7 @@ export function createGateway(options={}){
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Offscript-Client','Access-Control-Max-Age':'600'});return res.end()}
     try{
       const path=new URL(req.url,'http://localhost').pathname;
+      if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
         let ready=false;try{const result=await fetchImpl(new URL('/health',inference),{signal:AbortSignal.timeout(3000)});ready=healthy&&result.ok}catch{}
         return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active});
@@ -111,10 +112,12 @@ export function createGateway(options={}){
       }
       if(path.startsWith('/api/'))throw new RequestError(404,'API route not found.');
       if(req.method!=='GET'&&req.method!=='HEAD')throw new RequestError(405,'Method not allowed.');
+      if(path==='/index.html'){res.writeHead(308,{Location:'/'+new URL(req.url,'http://localhost').search,'Cache-Control':'no-store'});return res.end()}
       let decoded;try{decoded=decodeURIComponent(path)}catch{throw new RequestError(400,'Invalid address.')}
       const file=resolve(root,decoded==='/'?'index.html':`.${decoded}`);let selected=file,status=200;
       if(file!==root&&!file.startsWith(root+'/'))throw new RequestError(400,'Invalid address.');
       try{if(!(await stat(selected)).isFile())throw Error()}catch{selected=resolve(root,'404.html');status=404}
+      if(status===404||path==='/404.html')res.setHeader('X-Robots-Tag','noindex, follow');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://huggingface.co https://*.hf.space wss://*.hf.space; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       res.setHeader('X-Frame-Options','DENY');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
       res.writeHead(status,{'Content-Type':mime[extname(selected)]||'application/octet-stream','Cache-Control':/\/(assets|fonts)\//.test(path)?'public, max-age=86400':'no-store'});
