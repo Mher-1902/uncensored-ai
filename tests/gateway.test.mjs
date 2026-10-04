@@ -60,6 +60,13 @@ test('unavailable health, oversized context and forbidden origin fail honestly',
   const rejected=await fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,Origin:'https://evil.test'},body:JSON.stringify(input)});assert.equal(rejected.status,403);
   assert.equal(app.calls.filter(c=>c.path==='/v1/chat/completions').length,0);
 });
+test('public gateway accepts its configured HTTPS origin without trusting arbitrary hosts',async t=>{
+  for(const apiOrigin of ['http://model.test','https://model.test/','https://user:password@model.test','https://model.test/api'])assert.throws(()=>createGateway({apiOrigin}));
+  const app=await run(t,{origins:undefined,apiOrigin:'https://model.test'});
+  const response=await fetch(`${app.url}/api/health`,{headers:{Origin:'https://model.test'}});
+  assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'https://model.test');
+  assert.equal((await fetch(`${app.url}/api/health`,{headers:{Origin:'https://other.test',Host:'model.test'}})).status,403);
+});
 test('failed cache cleanup prevents inference',async t=>{
   const app=await run(t,{failErase:true});assert.equal((await app.send()).status,503);assert.equal((await app.send()).status,503);assert.equal(app.calls.filter(c=>c.path==='/v1/chat/completions').length,0);
 });

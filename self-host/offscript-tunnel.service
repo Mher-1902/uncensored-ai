@@ -1,0 +1,26 @@
+[Unit]
+Description=Offscript HTTPS tunnel (Tailscale userspace)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/uncensored-ai
+ExecStart=%h/uncensored-ai/.runtime/tailscale/tailscaled --tun=userspace-networking --state=%h/.local/state/offscript/tailscale/tailscaled.state --socket=%t/offscript-tailscale/tailscaled.sock --port=0 --no-logs-no-support
+Environment=XDG_CACHE_HOME=%h/.local/state/offscript/tailscale/cache
+RuntimeDirectory=offscript-tailscale
+RuntimeDirectoryMode=0700
+Restart=on-failure
+RestartSec=10
+MemoryMax=256M
+MemorySwapMax=0
+LimitCORE=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/offscript/tailscale %t/offscript-tailscale
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

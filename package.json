@@ -14,6 +14,7 @@
     "test": "python3 -m unittest discover -s tests -p test_*.py && node --test tests/*.test.mjs",
     "start": "node server/index.mjs",
     "benchmark": "node scripts/benchmark.mjs",
+    "fedora:bootstrap": "python3 self-host/bootstrap.py",
     "fedora:inspect": "python3 self-host/readiness.py",
     "fedora:prepare": "python3 self-host/prepare.py",
     "fedora:model": "python3 self-host/run_model.py"

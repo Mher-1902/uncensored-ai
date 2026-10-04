@@ -28,7 +28,9 @@ export function createGateway(options={}){
   const inference=new URL(options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081');
   if(!['127.0.0.1','localhost','[::1]'].includes(inference.hostname))throw Error('LLAMA_URL must be loopback. Expose only the gateway through HTTPS.');
   const port=process.env.PORT||'8080';
-  const origins=new Set(options.origins||[process.env.PUBLIC_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site',`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
+  const apiOrigin=options.apiOrigin||process.env.PUBLIC_API_ORIGIN;
+  if(apiOrigin){const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('PUBLIC_API_ORIGIN must be an exact HTTPS origin.');}
+  const origins=new Set(options.origins||[process.env.PUBLIC_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site',...(apiOrigin?[apiOrigin]:[]),`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
   const queueLimit=options.queueLimit??32,queueTimeout=options.queueTimeout??300000,generationTimeout=options.generationTimeout??300000;
   const fetchImpl=options.fetchImpl||fetch;let active=false,healthy=true;const waiting=[];
   async function acquire(signal){

@@ -5,10 +5,11 @@ After=network.target offscript-model.service
 [Service]
 Type=simple
 WorkingDirectory=%h/uncensored-ai
-ExecStart=/usr/bin/node server/index.mjs
+ExecStart=%h/uncensored-ai/.runtime/node/bin/node server/index.mjs
 Environment=HOST=127.0.0.1
 Environment=PORT=8080
 Environment=PUBLIC_ORIGIN=https://offscript-ephemeral.sukiasyanmher7.chatgpt.site
+Environment=PUBLIC_API_ORIGIN=https://offscript-samsung.tail8c9a09.ts.net
 Restart=on-failure
 RestartSec=10
 MemoryMax=256M

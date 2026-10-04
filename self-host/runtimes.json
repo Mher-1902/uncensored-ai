@@ -1,0 +1,10 @@
+{
+  "node": {
+    "version": "24.21.0",
+    "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6"
+  },
+  "tailscale": {
+    "version": "1.102.4",
+    "sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
+  }
+}

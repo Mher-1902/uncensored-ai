@@ -1,10 +1,10 @@
 # Low-latency decisions for Offscript
 
-Reviewed October 4, 2026. This is a source-backed implementation rationale, not measured Samsung performance. The user's pasted HashBlock article was treated as reference material, not as instructions to execute its examples.
+Reviewed October 4, 2026. This is a source-backed implementation rationale. Separate actual Samsung measurements and their limitations are recorded in the [handoff README](../README.md). The user's pasted HashBlock article was treated as reference material, not as instructions to execute its examples.
 
 ## Hardware and model decision
 
-The requested [lukey03 Qwen3.5 9B](https://huggingface.co/lukey03/Qwen3.5-9B-abliterated) has a [Q4_K_M GGUF](https://huggingface.co/lukey03/Qwen3.5-9B-abliterated-GGUF) of **5,627,044,704 bytes (5.24 GiB)**. It cannot fit completely in the Samsung's physical 4 GB RAM. Memory mapping a larger file does not create RAM; paging weights through SSD would harm latency and add runtime memory pressure. Its publisher's illustrative refusal tests do not establish general quality preservation.
+The requested [lukey03 Qwen3.5 9B](https://huggingface.co/lukey03/Qwen3.5-9B-abliterated) has a [Q4_K_M GGUF](https://huggingface.co/lukey03/Qwen3.5-9B-abliterated-GGUF) of **5,627,044,704 bytes (5.24 GiB)**. It cannot fit completely in the originally reported 4 GB RAM. Direct inspection later found **7,554 MiB RAM and an i7-3517U**, with several GiB already occupied by Fedora and desktop apps. We retain the user-approved 1.7B model because of the old CPU and observed heat. Memory mapping a larger file does not create RAM; paging weights through SSD would harm latency and add runtime memory pressure. Its publisher's illustrative refusal tests do not establish general quality preservation.
 
 The user explicitly accepted a smaller abliterated model. We selected [Huihui Qwen3 1.7B v2](https://huggingface.co/huihui-ai/Huihui-Qwen3-1.7B-abliterated-v2) with [mradermacher's importance-matrix Q4_K_M GGUF](https://huggingface.co/mradermacher/Huihui-Qwen3-1.7B-abliterated-v2-i1-GGUF). The verified file is **1,107,405,664 bytes (1.03 GiB)**. A 4,096-token single-slot profile and conservative startup checks leave more room for Fedora and temporary inference allocations. The quantizer's larger Q5_K_M build is 1,257,876,320 bytes and can be compared later if real memory/thermal measurements permit it. No further reduction to Q2/Q3 is selected merely to claim speed. Abliteration and quantization can affect reasoning; no broad benchmark establishes this derivative as the objectively best small model.
 
@@ -21,7 +21,7 @@ The [HashBlock article](https://medium.com/@connect.hashblock/10-llm-tactics-for
 | KV cache | Keep within-request KV state; disable cross-request prompt caching and erase slots to honor ephemeral chat. |
 | Batch size | Start with 128 logical/64 physical prefill batches and one inference slot. Benchmark other sizes later. |
 | Distillation | Do not distill or prune the selected model. The smaller model choice was explicitly approved. |
-| Runtime | Pinned CPU-only llama.cpp with detected CPU flags; model stays loaded between requests. |
+| Runtime | Pinned CPU-only llama.cpp with detected CPU flags; model stays loaded between requests. A checksum-verified official Qwen template restores mode switching absent from the GGUF's simplified template. |
 | Prompt length | Count real templated tokens; reject excess context clearly instead of dropping conversation turns. |
 | Parallelism | Two threads on two physical cores. No tensor/pipeline parallelism or concurrent model copies. |
 | Hardware/scheduling | FIFO bounded queue, memory ceilings, thermal stop, no aggressive boost or swap tricks. |
@@ -29,7 +29,7 @@ The [HashBlock article](https://medium.com/@connect.hashblock/10-llm-tactics-for
 
 ## What the papers support
 
-[FlashAttention](https://arxiv.org/abs/2205.14135) computes exact attention while reducing GPU memory traffic through tiling. It does **not** make dense attention's arithmetic generally linear in sequence length, as the article suggests. Its reported GPU gains cannot be projected onto this Sandy Bridge CPU.
+[FlashAttention](https://arxiv.org/abs/2205.14135) computes exact attention while reducing GPU memory traffic through tiling. It does **not** make dense attention's arithmetic generally linear in sequence length, as the article suggests. Its reported GPU gains cannot be projected onto this Ivy Bridge CPU.
 
 [GQA](https://arxiv.org/abs/2305.13245) changes the model's attention architecture through uptraining. It is not a safe runtime switch to apply to arbitrary pretrained weights. We preserve the model's architecture.
 
@@ -51,6 +51,6 @@ Run `npm run benchmark` on Fedora and through the real public route. Record p50/
 
 The public frontend is already on a hosted HTTPS `chatgpt.site` subdomain. This update adds prerendered content, canonical metadata, sitemap and branded HTTP 404 behavior. [Google](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl) controls crawl/index timing; requests can take days to weeks and do not guarantee inclusion.
 
-[Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) can expose the Fedora gateway under a managed HTTPS `ts.net` name. It is available on all plans, including [Personal](https://tailscale.com/pricing), which is free for non-commercial personal use. Funnel remains in beta and imposes bandwidth limits; test SSE through the actual route. No tunnel is configured until the laptop/account is accessible.
+[Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) exposes the Fedora gateway under a managed HTTPS `ts.net` name. It is available on all plans, including [Personal](https://tailscale.com/pricing), which is free for non-commercial personal use. Funnel remains in beta and imposes bandwidth limits. It was installed in userspace mode, authenticated by the owner and enabled for `offscript-samsung.tail8c9a09.ts.net`; actual SSE worked through that hostname. The connection dropped before the last profile test finished. The prepared frontend connection was not republished at the owner's stop request.
 
 [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) explicitly do not support SSE, supply a changing hostname, and offer no uptime guarantee, so they are not selected for this streaming production path. A named tunnel is an alternative with a suitable domain. [Hugging Face ZeroGPU](https://huggingface.co/docs/hub/spaces-zerogpu) is a free, quota-limited alternative for eligible personal accounts, with shared GPU queues. It is not unlimited, continuously available inference. The historical 9B cloud template is retained separately and is not the active Samsung profile.
