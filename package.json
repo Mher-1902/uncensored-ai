@@ -8,9 +8,14 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && node scripts/build.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "python3 -m unittest discover -s tests -p test_*.py"
+    "test": "python3 -m unittest discover -s tests -p test_*.py && node --test tests/*.test.mjs",
+    "start": "node server/index.mjs",
+    "benchmark": "node scripts/benchmark.mjs",
+    "fedora:inspect": "python3 self-host/readiness.py",
+    "fedora:prepare": "python3 self-host/prepare.py",
+    "fedora:model": "python3 self-host/run_model.py"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "5.3.0",

@@ -1,26 +1,13 @@
-# Free cloud hosting research — 27 September 2026
+# Hosting and activation
 
-| Service | What is free | What it does not provide |
-|---|---|---|
-| InfinityFree | Website hosting, PHP/MySQL, SSL and a provider subdomain; 5 GB disk | No suitable persistent Python/vLLM GPU runtime for this model |
-| Cloudflare Pages | Static site and a `pages.dev` address, within free-plan limits | No model GPU; Workers have 128 MB per isolate |
-| Hugging Face ZeroGPU | Up to two Gradio GPU Spaces for verified personal accounts older than 30 days | Unlimited GPU time, guaranteed low latency, or a persistent vLLM daemon |
-| OpenRouter free models | Cloud API within current free quotas | This selected Huihui model; the catalog's Venice Uncensored model is paid |
+The current public frontend uses the existing Sites project in `.openai/hosting.json` and the stable HTTPS URL https://offscript-ephemeral.sukiasyanmher7.chatgpt.site/. Keep this project ID when publishing edits. The static deployment is separate from the Fedora inference process.
 
-**Closest match:** a free static website plus an eligible Hugging Face ZeroGPU Space hosting the abliterated model. This is cloud-only, but its quotas make it a demo/hobby service, not an unlimited production SLA. It still requires account access and GPU validation.
+Use the Sites source-open, checks/build, package, save-version and deploy workflow. Publish the built `dist` output and `.openai/hosting.json`; do not upload `.runtime`, `.data`, model weights, logs or secrets. Static unknown paths use the included `404.html` with a real 404 status. The public frontend does not need a purchased domain.
 
-ZeroGPU currently lists 2 minutes/day for unauthenticated users and 5 minutes/day for free accounts. Anonymous API requests use a shared pool with stricter limits. Do not assume each of ten visitors receives an independent unlimited quota.
+For the user-approved 4 GB Samsung model profile, use [Fedora setup](docs/FEDORA.md). A public HTTPS API is activated only after actual model health, end-to-end streaming, cancellation, memory and thermal checks pass. `public/config.json` is intentionally offline until then.
 
-OpenRouter currently documents 50 requests/day and 20/minute without purchased credits. Its live model catalog was checked: no free endpoint for the requested Huihui checkpoint was found; the Venice Uncensored endpoint has nonzero token prices. No paid inference was enabled or purchased.
+[Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) provides a managed `ts.net` hostname on the [free non-commercial Personal plan](https://tailscale.com/pricing), with provider limits and beta status. This is a feasible personal route, not an installed tunnel or a production SLA. Named Cloudflare Tunnel is an alternative if a suitable domain is already available. Quick Tunnels are unsuitable for this SSE implementation.
 
-Sources:
+The earlier Hugging Face 9B template is retained as a separately untested alternative, subject to eligibility, quotas and model verification. No free static/PHP host supplies the RAM/GPU needed to run that model by simply uploading the website.
 
-- https://www.infinityfree.com/
-- https://developers.cloudflare.com/pages/platform/limits/
-- https://developers.cloudflare.com/workers/platform/limits/
-- https://huggingface.co/docs/hub/spaces-zerogpu
-- https://huggingface.co/docs/hub/spaces-api-endpoints
-- https://openrouter.ai/blog/tutorials/how-to-get-the-lowest-cost-llm-inference-on-openrouter/
-- https://openrouter.ai/api/v1/models
-
-For a public, fast service with reliable simultaneous GPU capacity, the realistic alternatives are paid inference, sponsored/community GPU access, or owned hardware. No verified service meeting all of free, unlimited, always-on, fast, and this particular model was found.
+See [Google indexing](docs/GOOGLE.md) for Search Console verification and sitemap submission. A public link is not proof of Google indexing.

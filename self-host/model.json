@@ -1,0 +1,14 @@
+{
+  "name": "Huihui Qwen3 1.7B v2 · abliterated",
+  "baseModel": "huihui-ai/Huihui-Qwen3-1.7B-abliterated-v2",
+  "repository": "mradermacher/Huihui-Qwen3-1.7B-abliterated-v2-i1-GGUF",
+  "revision": "aff5de9e25c8ab0d4dcf7da82aca0adbdac3ae98",
+  "filename": "Huihui-Qwen3-1.7B-abliterated-v2.i1-Q4_K_M.gguf",
+  "bytes": 1107405664,
+  "sha256": "578d94267903dc808e476ba8f94f65e5cd8cca29d9a1110b65407d76c56689ac",
+  "llamaRevision": "0504396140d1c882f5f6ee34466a42db7ae90114",
+  "context": 4096,
+  "threads": 2,
+  "minimumAvailableMiB": 2150,
+  "minimumTotalMiB": 3500
+}

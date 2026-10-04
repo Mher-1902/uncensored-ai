@@ -1,0 +1,8 @@
+/* Content stays visible if JavaScript fails; Trig enhances it when it enters view. */
+.hero-art[data-trig],.hero-copy[data-trig],.composer-zone[data-trig]{animation:none}
+.hero-art[data-trig].trig{animation:materialize 1.1s both}
+.hero-copy[data-trig].trig{animation:arrive .65s .1s both}
+.composer-zone[data-trig].trig{animation:arrive .7s .2s both}
+@media(prefers-reduced-motion:reduce){
+  .hero-art[data-trig],.hero-copy[data-trig],.composer-zone[data-trig]{animation:none!important;transform:none!important}
+}

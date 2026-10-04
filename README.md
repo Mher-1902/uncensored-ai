@@ -1,51 +1,51 @@
 # Offscript
 
-A cloud-only, temporary AI chat website with the supplied anonymous logo. No accounts, chat database, analytics, cookies, localStorage, sessionStorage, or conversation archive are implemented by the app. The conversation is kept in React memory and cleared on reset, reload, page exit, and restoration from the browser's back/forward cache.
+An ephemeral AI chat website with the supplied anonymous logo. No accounts, chat database, browser history storage or analytics. Messages remain in page/request memory and are cleared on leaving or reloading.
 
-## Current status
+Public website: **https://offscript-ephemeral.sukiasyanmher7.chatgpt.site/**
 
-- Website built and ready to publish on a free hosted subdomain.
-- **Cloud inference is NOT connected.** `public/config.json` deliberately has `space: null`. The UI reports this honestly and sends no question to a model.
-- The Hugging Face ZeroGPU backend in `cloud/huggingface` is a deployment candidate, **not GPU-tested**. An eligible account and a running Space are required before end-to-end validation.
-- No local model or tunnel is required or used by this version. The earlier local model processes were stopped. Their isolated downloads remain under ignored `.runtime` and `.data` directories and are not deployed.
-- No response-time or 10-user load result is claimed until the actual cloud service passes those checks.
+**Current activation status:** the frontend can be published independently. Its `public/config.json` deliberately contains `apiBase: null`; real replies remain unavailable until the Fedora model server is connected and verified. The UI reports this honestly.
 
-## Development and static hosting
+## Selected Samsung profile
 
-Node 24+:
+For the Samsung Series 9, Fedora, Sandy Bridge i5, 4 GB RAM: **Huihui Qwen3 1.7B abliterated v2, Q4_K_M GGUF**, 1.11 GB, pinned revision and SHA-256. The user approved a smaller model after the requested Qwen3.5 9B's 5.63 GB weights exceeded the laptop's RAM. This profile uses llama.cpp, not AWQ/vLLM. No Samsung inference benchmark or quality guarantee is claimed.
+
+See [Fedora setup](docs/FEDORA.md), [latency research](docs/LATENCY-RESEARCH.md), and [Google indexing](docs/GOOGLE.md).
+
+## Develop and check
+
+Node.js 24+, Python 3, npm:
 
 ```sh
 npm ci
 npm run dev
 npm run build
-npm run preview
 npm test
 ```
 
-The output is `dist/`. It can run on Sites, Cloudflare Pages, Netlify, GitHub Pages (with the correct base path), or InfinityFree's `htdocs` folder. The website itself needs no Node or Python process in production. `_headers` supplies security and cache policy on hosts that support that file; equivalent headers must be configured separately on other providers.
+Build generates crawlable homepage HTML, hydrates the React UI, defers Markdown formatting until needed, and emits a sitemap plus custom 404. The Sites static manifest returns real 404s instead of serving the homepage for every URL. The gateway is a separate Node service, not deployed inside this static frontend.
 
-## Connect the model
+## Run inference on Fedora
 
-1. Sign into a Hugging Face account eligible for free ZeroGPU hosting (currently verified and over 30 days old).
-2. Create a public Gradio Space and upload the files in `cloud/huggingface/`. Select **ZeroGPU**, not a paid GPU.
-3. Resolve any build/runtime compatibility issues. Test the `/generate` endpoint with a harmless question, a follow-up, a stopped request, and concurrent requests. Measure GPU memory and warm/cold latency. The quantized checkpoint and ZeroGPU runtime are not verified until this succeeds.
-4. Set `space` in `public/config.json` to your `username/space-name`. This is a public identifier, never a token. Rebuild and redeploy.
-5. Verify streaming and cancellation through the public website. Visitors call the public Space directly; a shared private API token is never embedded in JavaScript.
+```sh
+npm run fedora:inspect
+npm run fedora:prepare
+npm run fedora:model
+```
 
-For development, `npm test` runs the backend request-validation tests. TypeScript validation runs with `npm run build`. Do not mistake these checks for GPU inference or load tests.
+In another terminal:
 
-## Privacy scope
+```sh
+npm start
+npm run benchmark
+```
 
-The website does not persist chat content. Closing it cancels the active client job on a best-effort basis. Network failures, abrupt termination, and a third-party queue may delay cancellation. Hugging Face and the website host still process traffic under their policies; this is not a promise of zero infrastructure logs, immediate physical RAM erasure, or anonymity. The supplied backend has no chat state or application prompt logging, but the hosting provider controls its queue and infrastructure.
+Read `docs/FEDORA.md` before public activation. `self-host/` includes CPU-feature-aware compilation, verified model download, real-memory startup checks, thermal monitoring and optional systemd resource limits. The loopback gateway validates conversation structure, counts exact model tokens, streams answers, aborts on disconnect, serializes generation and erases prompt cache after requests. It never saves conversations or exposes llama.cpp administration endpoints.
 
-## Performance
+The public website remains on the hosted HTTPS subdomain. Once the laptop has a verified public HTTPS gateway, `node scripts/connect-model.mjs https://THE-REAL-HOST/api` checks health/CORS and saves the endpoint. Rebuild and publish to activate it; CSP allows only the configured API origin. Leave credentials out of frontend configuration.
 
-The frontend streams generated text, loads the inference client only when needed, serves local fonts, and has no history fetch or database work. Thinking mode is disabled in the GPU template and Brief replies are available. There is no artificial 10-user cap. GPU concurrency and the provider's free quotas determine real capacity. Ten simultaneous requests may queue; no honest zero-cost setup can promise unlimited low latency.
+## Privacy and practical limits
 
-## Hosting options
+There is no application chat retention. Cache erasure/garbage collection is not physical RAM wiping. OS and hosting/tunnel infrastructure have their own behavior and policies. Reasoned mode is the default; Direct mode is an explicit speed/quality choice. Context/output/queue limits protect the old laptop and produce clear errors. Ten callers may queue; ten simultaneous fast generations are not promised.
 
-See [HOSTING.md](HOSTING.md) for verified options and limitations. A free subdomain is a real HTTPS website address; a custom `.com` is a separate registration purchase. Google indexing is not automatic or guaranteed.
-
-## Asset attribution
-
-`public/anonymous-logo.png` is a lossless PNG conversion of the image supplied by the user. Its appearance is adapted with CSS, with no generated replacement. Font licenses are included in the installed Fontsource packages. Model licensing comes from the linked model repositories.
+`cloud/huggingface/` is the earlier, unverified 9B GPU hosting alternative. It is not the current model connection or Samsung setup. No cloud GPU deployment, Fedora service install, tunnel setup or Google indexing request is represented as completed.

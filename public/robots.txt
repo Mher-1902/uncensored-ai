@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Sitemap: https://offscript-ephemeral.sukiasyanmher7.chatgpt.site/sitemap.xml
