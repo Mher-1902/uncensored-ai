@@ -5,7 +5,7 @@ import {createVerifier} from '../../cloud/vercel-gateway/auth.mjs';
 import {createBridge} from '../../cloud/vercel-gateway/index.mjs';
 import {createAppHandler} from '../../server/vercel-app.mjs';
 import {forward} from '../../cloud/vercel-gateway/proxy.mjs';
-import configHandler from '../../api/config.mjs';
+import configHandler from '../../server/vercel-api.mjs';
 const require = createRequire(new URL('../../cloud/vercel-gateway/package.json', import.meta.url));
 const {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} = await import(require.resolve('jose'));
 
@@ -19,7 +19,7 @@ test('public configuration uses same-domain API paths without leaking the old ho
   const response=await configHandler.fetch(new Request('https://app.test/config.json'));
   const config=await response.json();assert.equal(config.apiBase,'/api');assert.equal(config.space,null);
   assert.doesNotMatch(JSON.stringify(config),/tail8c9a09|GATEWAY_URL|TOKEN/);
-  assert.equal((await configHandler.fetch(request())).status,405);
+  assert.equal((await configHandler.fetch(new Request('https://app.test/config.json',{method:'POST'}))).status,405);
 });
 
 test('app reads a late runtime binding and preserves its URL base path',async()=>{

@@ -6,17 +6,24 @@
       "framework": "vite",
       "installCommand": "npm ci",
       "buildCommand": "npm run build:vercel",
-      "outputDirectory": "dist",
+      "outputDirectory": "dist"
+    },
+    "api": {
+      "root": ".",
+      "runtime": "node",
+      "entrypoint": "server/vercel-api.mjs",
+      "installCommand": "npm ci",
+      "buildCommand": "node --check server/vercel-api.mjs",
       "bindings": [
         { "type": "service", "service": "gateway", "format": "url", "env": "GATEWAY_URL" }
       ],
       "functions": {
-        "api/*.mjs": { "maxDuration": 300, "supportsCancellation": true }
+        "server/vercel-api.mjs": { "maxDuration": 300, "supportsCancellation": true }
       }
     },
     "gateway": {
       "root": "cloud/vercel-gateway",
-      "runtime": "nodejs24.x",
+      "runtime": "node",
       "entrypoint": "index.mjs",
       "installCommand": "npm ci",
       "functions": {
@@ -25,7 +32,8 @@
     }
   },
   "rewrites": [
-    { "source": "/config.json", "destination": { "service": "app", "path": "/api/config" } },
+    { "source": "/config.json", "destination": { "service": "api" } },
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
     { "source": "/(.*)", "destination": { "service": "app" } }
   ],
   "headers": [
