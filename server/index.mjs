@@ -3,6 +3,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {once} from 'node:events';
+import {timingSafeEqual} from 'node:crypto';
 import {readEvents} from '../src/stream.ts';
 
 const root=resolve(fileURLToPath(new URL('../dist/',import.meta.url)));
@@ -26,6 +27,8 @@ async function bodyJSON(req){
   try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{throw new RequestError(400,'Invalid message data.')}
 }
 export function createGateway(options={}){
+  const accessToken=options.accessToken??process.env.GATEWAY_ACCESS_TOKEN;
+  if(accessToken&&!/^[\w-]{32,256}$/.test(accessToken))throw Error('GATEWAY_ACCESS_TOKEN must be a 32–256 character service credential.');
   const inference=new URL(options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081');
   if(!['127.0.0.1','localhost','[::1]'].includes(inference.hostname))throw Error('LLAMA_URL must be loopback. Expose only the gateway through HTTPS.');
   const port=process.env.PORT||'8080';
@@ -59,6 +62,11 @@ export function createGateway(options={}){
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Offscript-Client','Access-Control-Max-Age':'600'});return res.end()}
     try{
       const path=new URL(req.url,'http://localhost').pathname;
+      if(path.startsWith('/api/')&&path!=='/api/health'&&accessToken){
+        const actual=Buffer.from(String(req.headers.authorization||''));
+        const expected=Buffer.from(`Bearer ${accessToken}`);
+        if(actual.length!==expected.length||!timingSafeEqual(actual,expected))throw new RequestError(401,'Service authentication is required.');
+      }
       if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
         let ready=false;try{const result=await fetchImpl(new URL('/health',inference),{signal:AbortSignal.timeout(3000)});ready=healthy&&result.ok}catch{}

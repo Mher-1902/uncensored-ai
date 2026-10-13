@@ -54,6 +54,7 @@ services:
       PORT: "8080"
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://offscript-ephemeral.sukiasyanmher7.chatgpt.site}
       PUBLIC_API_ORIGIN: ${PUBLIC_API_ORIGIN:-}
+      GATEWAY_ACCESS_TOKEN: ${GATEWAY_ACCESS_TOKEN:-}
     restart: on-failure:3
     init: true
     read_only: true

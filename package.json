@@ -9,9 +9,10 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && node scripts/build.mjs",
+    "build:vercel": "tsc --noEmit && node scripts/build-vercel.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "check:seo": "python3 scripts/check_seo.py",
-    "test": "python3 -m unittest discover -s tests -p test_*.py && node --test tests/*.test.mjs",
+    "test": "python3 -m unittest discover -s tests -p test_*.py && node --test tests/*.test.mjs tests/vercel/*.test.mjs",
     "start": "node server/index.mjs",
     "benchmark": "node scripts/benchmark.mjs",
     "fedora:bootstrap": "python3 self-host/bootstrap.py",

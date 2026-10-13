@@ -52,6 +52,17 @@ test('streams a reply and erases cache before and after it',async t=>{
   await new Promise(resolve=>setImmediate(resolve));assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
   const request=app.calls.find(c=>c.path==='/v1/chat/completions').body;assert.equal(request.cache_prompt,false);assert.equal(request.id_slot,0);assert.equal(request.chat_template_kwargs.enable_thinking,false);
 });
+test('an optional service credential protects inference without breaking health checks',async t=>{
+  const accessToken='t'.repeat(40);
+  assert.throws(()=>createGateway({accessToken:'short'}));
+  const app=await run(t,{accessToken});
+  assert.equal((await fetch(`${app.url}/api/health`)).status,200);
+  assert.equal((await app.send()).status,401);
+  assert.equal(app.calls.filter(c=>c.path==='/v1/chat/completions').length,0);
+  assert.equal((await fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,Authorization:`Bearer ${'x'.repeat(40)}`},body:JSON.stringify(input)})).status,401);
+  const accepted=await fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,Authorization:`Bearer ${accessToken}`},body:JSON.stringify(input)});
+  assert.equal(accepted.status,200);assert.match(await accepted.text(),/Hello/);
+});
 test('concurrent callers share one inference slot',async t=>{
   const app=await run(t);const responses=await Promise.all(Array.from({length:10},async()=>{const r=await app.send();return r.text()}));assert.equal(responses.length,10);assert.equal(app.maxBusy(),1);assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,20);
 });

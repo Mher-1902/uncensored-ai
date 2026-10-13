@@ -17,9 +17,9 @@ await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',empty
   // A configured public API origin needs both browser permission and server CORS.
   const apiBase=process.env.SITE_API_BASE||JSON.parse(await readFile('dist/config.json','utf8')).apiBase;
   if(apiBase){
-    const url=new URL(apiBase);if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw Error('SITE_API_BASE must be a plain HTTPS API base URL.');
-    const config=JSON.parse(await readFile('dist/config.json','utf8'));config.apiBase=url.href.replace(/\/$/,'');
+    const url=apiBase==='/api'?new URL(apiBase,siteOrigin):new URL(apiBase);if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw Error('SITE_API_BASE must be /api or a plain HTTPS API base URL.');
+    const config=JSON.parse(await readFile('dist/config.json','utf8'));config.apiBase=apiBase==='/api'?'/api':url.href.replace(/\/$/,'');
     await writeFile('dist/config.json',JSON.stringify(config)+'\n');
-    const headers=await readFile('dist/_headers','utf8');await writeFile('dist/_headers',headers.replace("connect-src 'self'",`connect-src 'self' ${url.origin}`));
+    if(apiBase!=='/api'){const headers=await readFile('dist/_headers','utf8');await writeFile('dist/_headers',headers.replace("connect-src 'self'",`connect-src 'self' ${url.origin}`));}
   }
 }
