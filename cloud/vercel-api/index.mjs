@@ -1,7 +1,7 @@
-import metadata from '../public/config.json' with {type: 'json'};
+import metadata from '../../public/config.json' with {type: 'json'};
 import {Hono} from 'hono';
-import {json} from '../cloud/vercel-gateway/proxy.mjs';
-import {createAppHandler} from './vercel-app.mjs';
+import {json} from '../vercel-gateway/proxy.mjs';
+import {createAppHandler} from './handler.mjs';
 
 const chat = createAppHandler('/api/chat');
 const health = createAppHandler('/api/health');

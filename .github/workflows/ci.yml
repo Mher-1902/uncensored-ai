@@ -27,6 +27,7 @@ jobs:
           node-version: 24.21.0
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix cloud/vercel-api
       - run: npm ci --prefix cloud/vercel-gateway
       - run: npm run build
       - run: npm run check:seo
@@ -36,4 +37,5 @@ jobs:
           SITE_ORIGIN: https://offscript.example.test
       - run: npm test
       - run: npm audit --audit-level=high
+      - run: npm audit --prefix cloud/vercel-api --audit-level=high
       - run: npm audit --prefix cloud/vercel-gateway --audit-level=high

@@ -9,17 +9,17 @@
       "outputDirectory": "dist"
     },
     "api": {
-      "root": ".",
+      "root": "cloud/vercel-api",
       "framework": "hono",
       "runtime": "node",
-      "entrypoint": "server/vercel-api.mjs",
+      "entrypoint": "index.mjs",
       "installCommand": "npm ci",
-      "buildCommand": "node --check server/vercel-api.mjs",
+      "buildCommand": "node --check index.mjs",
       "bindings": [
         { "type": "service", "service": "gateway", "format": "url", "env": "GATEWAY_URL" }
       ],
       "functions": {
-        "server/vercel-api.mjs": { "maxDuration": 300, "supportsCancellation": true }
+        "index.mjs": { "maxDuration": 300, "supportsCancellation": true }
       }
     },
     "gateway": {

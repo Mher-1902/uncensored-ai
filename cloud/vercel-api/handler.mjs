@@ -1,4 +1,4 @@
-import {forward, json, routeRequest} from '../cloud/vercel-gateway/proxy.mjs';
+import {forward, json, routeRequest} from '../vercel-gateway/proxy.mjs';
 
 // Bindings exist in functions at runtime, never in the Vite build or browser.
 export function createAppHandler(path, {env = process.env, fetchImpl = fetch} = {}) {

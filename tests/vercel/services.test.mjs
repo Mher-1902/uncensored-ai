@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {createVerifier} from '../../cloud/vercel-gateway/auth.mjs';
 import {createBridge} from '../../cloud/vercel-gateway/index.mjs';
-import {createAppHandler} from '../../server/vercel-app.mjs';
+import {createAppHandler} from '../../cloud/vercel-api/handler.mjs';
 import {forward} from '../../cloud/vercel-gateway/proxy.mjs';
-import configHandler from '../../server/vercel-api.mjs';
+import configHandler from '../../cloud/vercel-api/index.mjs';
 const require = createRequire(new URL('../../cloud/vercel-gateway/package.json', import.meta.url));
 const {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} = await import(require.resolve('jose'));
 
