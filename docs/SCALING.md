@@ -10,7 +10,7 @@ The owner chose **managed Supabase/PostgreSQL** for future accounts and product 
 
 | Need | Tool and decision | Adoption stage |
 | --- | --- | --- |
-| Server containers | Rootless Docker Engine + Compose; resource limits and private networking | Engine installed; container PR under validation |
+| Server containers | Rootless Docker Engine + Compose; resource limits and private networking | Samsung development backend active; final startup checks in progress |
 | Incremental delivery | GitHub Actions, Dependabot, reviewed PRs and immutable image digests in GHCR | Build/security CI active; production delivery needs configuration |
 | Accounts and persistent data | Supabase Auth + managed PostgreSQL; reviewed RLS and SQL migrations | Owner selected; implement before user accounts launch |
 | Database policy tests | Supabase CLI and pgTAP; owner/other-user/anonymous isolation tests | Add with the first schema migration |
@@ -22,6 +22,8 @@ The owner chose **managed Supabase/PostgreSQL** for future accounts and product 
 | Secret detection | Evaluate a pinned stable Betterleaks release using offline detection and redacted output | Next security increment |
 | Image generation | ComfyUI + maintained ComfyUI-GGUF on separate authenticated GPU workers | Near future; validate selected model/workflow/license first |
 | Cloud infrastructure | OpenTofu for versioned compute/network configuration once a provider is chosen | Later, when moving beyond the single server |
+
+The owner wants an iPad as the future Grafana display. The proposed path is a small metrics collector on the Samsung sending over authenticated HTTPS to Grafana Cloud, with the iPad opening private dashboards in Safari. Mac and iPad uptime do not control collection. This phase is explicitly deferred: no Grafana account, collector or remote-write integration has been configured. [Grafana Linux Server integration](https://grafana.com/docs/grafana-cloud/observe-and-act/monitor-infrastructure/integrations/integration-reference/integration-linux-node/).
 
 Docker supports publishing images through GitHub Actions/GHCR. The delivery target should be an immutable digest with a tested previous digest for rollback. PR jobs receive no production credentials. [Image publication](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
 
