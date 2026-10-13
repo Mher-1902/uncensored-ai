@@ -11,6 +11,10 @@ if [[ ! "$request" =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
   exit 64
 fi
 target=${BASH_REMATCH[1]}
+if systemctl --user is-active --quiet offscript-containers; then
+  printf 'This entry point manages native services; container delivery requires its reviewed deployment workflow.\n' >&2
+  exit 64
+fi
 repo="$HOME/uncensored-ai"
 test "$(id -u)" -ne 0
 test -d "$XDG_RUNTIME_DIR"
