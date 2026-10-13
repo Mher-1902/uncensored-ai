@@ -1,0 +1,89 @@
+name: Deploy reviewed backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full commit SHA already reviewed and merged to main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backend
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_COMMIT: ${{ inputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify reviewed commit
+        run: |
+          [[ "$TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          git cat-file -e "$TARGET_COMMIT^{commit}"
+          git merge-base --is-ancestor "$TARGET_COMMIT" origin/main
+          git switch --detach "$TARGET_COMMIT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:seo
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: bash -n self-host/deploy-reviewed.sh
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      TARGET_COMMIT: ${{ inputs.commit }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      TS_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      DEPLOY_HOST_KEYS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Require deployment credentials
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$TS_CLIENT_ID"
+          test -n "$TS_CLIENT_SECRET"
+          test -n "$DEPLOY_KEY"
+          test -n "$DEPLOY_HOST_KEYS"
+          [[ "$TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+      - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:offscript-ci
+          version: 1.104.1
+          args: --accept-dns=false --accept-routes=false
+      - name: Deploy through restricted SSH entry point
+        run: |
+          deploy_temp=$(mktemp -d)
+          trap 'rm -rf -- "$deploy_temp"' EXIT
+          chmod 700 "$deploy_temp"
+          printf '%s\n' "$DEPLOY_KEY" > "$deploy_temp/key"
+          printf '%s\n' "$DEPLOY_HOST_KEYS" > "$deploy_temp/known_hosts"
+          chmod 600 "$deploy_temp/key" "$deploy_temp/known_hosts"
+          ssh -T -i "$deploy_temp/key" \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o HostKeyAlias=offscript-samsung \
+            -o UserKnownHostsFile="$deploy_temp/known_hosts" \
+            -o ForwardAgent=no -o ConnectTimeout=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy $TARGET_COMMIT"
