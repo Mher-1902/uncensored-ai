@@ -19,6 +19,12 @@ jobs:
         with:
           persist-credentials: false
       - run: docker compose config --quiet
+      - name: Validate the pinned ingress configuration
+        run: |
+          docker build -f docker/ingress.Dockerfile -t offscript-ingress:ci .
+          docker run --rm --network=none --read-only --user 65532:65532 --cap-drop=ALL --security-opt=no-new-privileges \
+            offscript-ingress:ci \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - run: docker build -f docker/gateway.Dockerfile -t offscript-gateway:ci .
       - name: Test the actual non-root, read-only gateway image
         run: |

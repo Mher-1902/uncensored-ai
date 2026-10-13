@@ -28,8 +28,6 @@ services:
         read_only: true
         bind:
           create_host_path: false
-    ports:
-      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
     networks: [backend]
     logging:
       driver: local
@@ -72,6 +70,47 @@ services:
       options:
         max-size: 5m
         max-file: "2"
+  ingress:
+    image: offscript-ingress:${RELEASE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/ingress.Dockerfile
+    user: "65532:65532"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: on-failure:3
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      GOMEMLIMIT: 48MiB
+      GOMAXPROCS: "1"
+      XDG_CONFIG_HOME: /tmp/config
+      XDG_DATA_HOME: /tmp/data
+    cpus: 0.15
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 64
+    ulimits:
+      core: 0
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
+    networks: [edge, backend]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/api/health]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "2"
 networks:
+  edge: {}
   backend:
     internal: true
