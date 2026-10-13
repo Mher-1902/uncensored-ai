@@ -10,6 +10,7 @@
     },
     "api": {
       "root": ".",
+      "framework": "hono",
       "runtime": "node",
       "entrypoint": "server/vercel-api.mjs",
       "installCommand": "npm ci",
@@ -23,6 +24,7 @@
     },
     "gateway": {
       "root": "cloud/vercel-gateway",
+      "framework": "hono",
       "runtime": "node",
       "entrypoint": "index.mjs",
       "installCommand": "npm ci",

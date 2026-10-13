@@ -1,4 +1,5 @@
 import {createVerifier} from './auth.mjs';
+import {Hono} from 'hono';
 import {forward, json, routeRequest} from './proxy.mjs';
 
 export function createBridge({env = process.env, fetchImpl = fetch, verify} = {}) {
@@ -31,4 +32,7 @@ export function createBridge({env = process.env, fetchImpl = fetch, verify} = {}
   };
 }
 
-export default {fetch: createBridge()};
+const handler = createBridge();
+const app = new Hono();
+app.all('*', context => handler(context.req.raw));
+export default app;
