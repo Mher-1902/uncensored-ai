@@ -1,6 +1,7 @@
 name: offscript
 services:
   model:
+    cgroup_parent: offscript-containers.slice
     platform: linux/amd64
     image: offscript-model:${RELEASE_TAG:-local}
     build:
@@ -35,6 +36,7 @@ services:
         max-size: 5m
         max-file: "2"
   gateway:
+    cgroup_parent: offscript-containers.slice
     image: offscript-gateway:${RELEASE_TAG:-local}
     build:
       context: .
@@ -71,6 +73,7 @@ services:
         max-size: 5m
         max-file: "2"
   ingress:
+    cgroup_parent: offscript-containers.slice
     image: offscript-ingress:${RELEASE_TAG:-local}
     build:
       context: .
