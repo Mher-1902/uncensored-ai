@@ -6,7 +6,7 @@ Development and backend execution belong on the Samsung. The Mac provides remote
 
 ## Selected direction
 
-The owner chose **managed Supabase/PostgreSQL** for future accounts and product data. Supabase combines PostgreSQL, Auth and database authorization through RLS. Keep production and development projects separate, with schema migrations and isolation tests in Git. No cloud project or paid service has been created. [Supabase database](https://supabase.com/docs/guides/database/overview), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
+The owner chose **managed Supabase/PostgreSQL** for future accounts and product data. Supabase combines PostgreSQL, Auth and database authorization through RLS. Keep production and development projects separate, with schema migrations and isolation tests in Git. The owner created the Free `Mher Projects` organization and shared project reference `pgyfliwdlonitlhzmmsj`; its development role and identity settings still need inspection. No database migration or paid service has been provisioned by this work. [Supabase database](https://supabase.com/docs/guides/database/overview), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 | Need | Tool and decision | Adoption stage |
 | --- | --- | --- |
