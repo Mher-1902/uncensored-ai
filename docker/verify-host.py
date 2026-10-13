@@ -21,6 +21,9 @@ if 'name=rootless' not in security:
 control = subprocess.check_output(['docker', 'info', '--format', '{{.CgroupVersion}} {{.CgroupDriver}}'], text=True).strip()
 if control != '2 systemd':
     raise SystemExit('Cgroup v2 with systemd is required to enforce resource limits.')
+swap = subprocess.check_output(['systemctl', '--user', 'show', 'offscript-containers.slice', '-p', 'MemorySwapMax', '--value'], text=True).strip()
+if swap != '0' or subprocess.run(['systemctl', '--user', 'is-active', '--quiet', 'offscript-containers.slice']).returncode != 0:
+    raise SystemExit('Install and start offscript-containers.slice with MemorySwapMax=0 first.')
 for service in ['offscript-model', 'offscript-web']:
     if subprocess.run(['systemctl', '--user', 'is-active', '--quiet', service]).returncode == 0:
         raise SystemExit('Stop the native model/gateway before starting their containers.')
