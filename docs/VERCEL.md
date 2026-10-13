@@ -18,6 +18,8 @@ Vercel services preserve the original public request path. An app-wide rewrite s
 
 ## Environment and authentication
 
+An earlier source config points at the erased server's public hostname. The more specific `/config.json` rewrite selects the app's `/api/config` function, which publishes only same-origin `/api` and public model metadata. This works during `vercel dev` as well as deployments; no internal binding or credential appears in browser configuration. Vite uses its multi-page mode to preserve actual 404 responses instead of a catch-all HTML fallback.
+
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `GATEWAY_URL` | App runtime; generated binding only | Private URL of this deployment's gateway |

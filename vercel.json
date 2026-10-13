@@ -25,6 +25,7 @@
     }
   },
   "rewrites": [
+    { "source": "/config.json", "destination": { "service": "app", "path": "/api/config" } },
     { "source": "/(.*)", "destination": { "service": "app" } }
   ],
   "headers": [

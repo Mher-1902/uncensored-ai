@@ -5,6 +5,7 @@ import {createVerifier} from '../../cloud/vercel-gateway/auth.mjs';
 import {createBridge} from '../../cloud/vercel-gateway/index.mjs';
 import {createAppHandler} from '../../server/vercel-app.mjs';
 import {forward} from '../../cloud/vercel-gateway/proxy.mjs';
+import configHandler from '../../api/config.mjs';
 const require = createRequire(new URL('../../cloud/vercel-gateway/package.json', import.meta.url));
 const {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} = await import(require.resolve('jose'));
 
@@ -13,6 +14,13 @@ const headers={'Content-Type':'application/json','X-Offscript-Client':'web'};
 const request=(overrides={})=>new Request('https://app.test/api/chat',{method:'POST',headers,body:JSON.stringify(payload),...overrides});
 const env={SUPABASE_URL:'https://project.supabase.co',SAMSUNG_API_ORIGIN:'https://server.test',SAMSUNG_GATEWAY_TOKEN:'s'.repeat(40)};
 const sse=()=>new Response('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+
+test('public configuration uses same-domain API paths without leaking the old host or binding',async()=>{
+  const response=await configHandler.fetch(new Request('https://app.test/config.json'));
+  const config=await response.json();assert.equal(config.apiBase,'/api');assert.equal(config.space,null);
+  assert.doesNotMatch(JSON.stringify(config),/tail8c9a09|GATEWAY_URL|TOKEN/);
+  assert.equal((await configHandler.fetch(request())).status,405);
+});
 
 test('app reads a late runtime binding and preserves its URL base path',async()=>{
   const runtime={};let calls=0;
