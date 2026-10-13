@@ -1,0 +1,77 @@
+name: offscript
+services:
+  model:
+    platform: linux/amd64
+    image: offscript-model:${RELEASE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/model.Dockerfile
+    # No automatic restart after a thermal stop; the boot unit starts a cool model.
+    restart: "no"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.8
+    mem_limit: 2500m
+    memswap_limit: 2500m
+    pids_limit: 64
+    ulimits:
+      core: 0
+    tmpfs:
+      - /run/model:rw,noexec,nosuid,nodev,mode=0700,size=16m
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    volumes:
+      - type: bind
+        source: ./.data/models
+        target: /app/.data/models
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
+    networks: [backend]
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "2"
+  gateway:
+    image: offscript-gateway:${RELEASE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+      args:
+        SITE_API_BASE: ${SITE_API_BASE:-}
+        SITE_ORIGIN: ${SITE_ORIGIN:-}
+    # Share only this private network namespace, keeping inference on loopback.
+    network_mode: service:model
+    depends_on:
+      model:
+        condition: service_healthy
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://offscript-ephemeral.sukiasyanmher7.chatgpt.site}
+      PUBLIC_API_ORIGIN: ${PUBLIC_API_ORIGIN:-}
+    restart: on-failure:3
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.25
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    ulimits:
+      core: 0
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "2"
+networks:
+  backend:
+    internal: true

@@ -2,6 +2,8 @@
 
 For ongoing changes, use the [reviewed delivery workflow](docs/DELIVERY.md), [security requirements](SECURITY.md) and [infrastructure roadmap](docs/ROADMAP.md). The handoff below records the earlier machine state; current deployments require fresh validation.
 
+The [Docker backend](docs/DOCKER.md) runs on the Samsung independently of the Mac. Docker Desktop is optional tooling; server development and serving stay on the Samsung.
+
 Offscript is an ephemeral AI chat website with the supplied anonymous figure/logo, a charcoal-and-lime visual theme, expressive typography, streaming replies, a custom 404 page and search-engine metadata. Conversations stay in the current browser page and request memory; there is no account system, chat database, saved conversation history or analytics.
 
 **Handoff checkpoint: October 4, 2026.** The owner asked us to stop development, document the work and push everything to GitHub before retiring the development Mac. This README is the starting point for the next laptop or Codex session. Do not assume the public frontend has already received the latest model connection.

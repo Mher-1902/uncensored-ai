@@ -1,0 +1,20 @@
+[Unit]
+Description=Offscript Docker backend on the Samsung
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/uncensored-ai
+Environment=DOCKER_HOST=unix://%t/docker.sock
+EnvironmentFile=-%h/.config/offscript/containers.env
+ExecStartPre=/usr/bin/python3 docker/verify-host.py
+ExecStart=/usr/bin/docker compose up -d --wait --wait-timeout 180
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=240
+TimeoutStopSec=60
+LimitCORE=0
+
+[Install]
+WantedBy=default.target
