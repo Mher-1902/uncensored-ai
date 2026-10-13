@@ -3,6 +3,8 @@ dist/
 .runtime/
 .data/
 .env
+.env.*
+!.env.example
 test-results/
 playwright-report/
 *.log

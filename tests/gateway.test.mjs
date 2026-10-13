@@ -90,3 +90,22 @@ test('canonical aliases redirect and operational routes stay out of search index
     const response=await fetch(app.url+route);assert.match(response.headers.get('x-robots-tag'),/noindex/);
   }
 });
+test('invalid client and JSON envelopes never reach inference',async t=>{
+  const app=await run(t);
+  const request=(body,extra={})=>fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,...extra},body,signal:AbortSignal.timeout(5000)});
+  assert.equal((await request(JSON.stringify(input),{'X-Offscript-Client':''})).status,403);
+  assert.equal((await request(JSON.stringify(input),{'Content-Type':'text/plain'})).status,415);
+  assert.equal((await request(JSON.stringify(input),{'Content-Type':'application/json-invalid'})).status,415);
+  assert.equal((await request('{')).status,400);
+  assert.equal((await request(JSON.stringify({...input,maxTokens:64}))).status,400);
+  assert.equal(app.calls.length,0);
+});
+test('oversized JSON receives a bounded rejection before inference',async t=>{
+  const app=await run(t);
+  for(const size of [65536,524288]){
+    const response=await app.send({...input,messages:[{role:'user',content:'x'.repeat(size)}]},AbortSignal.timeout(5000));
+    assert.equal(response.status,413);
+    assert.match(response.headers.get('x-robots-tag'),/noindex/);
+  }
+  assert.equal(app.calls.length,0);
+});

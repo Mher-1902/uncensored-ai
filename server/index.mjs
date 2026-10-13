@@ -19,7 +19,8 @@ export function validateRequest(value){
   return {messages,maxTokens:value.maxTokens,reasoned:value.reasoned};
 }
 async function bodyJSON(req){
-  if(!String(req.headers['content-type']).startsWith('application/json'))throw new RequestError(415,'Send JSON.');
+  const mediaType=String(req.headers['content-type']||'').split(';',1)[0].trim().toLowerCase();
+  if(mediaType!=='application/json')throw new RequestError(415,'Send JSON.');
   let size=0;const parts=[];
   for await(const chunk of req){size+=chunk.length;if(size>65536)throw new RequestError(413,'This message is too large. Please shorten it.');parts.push(chunk)}
   try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{throw new RequestError(400,'Invalid message data.')}
