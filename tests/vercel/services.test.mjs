@@ -48,6 +48,14 @@ test('oversized and malformed JSON never reaches an internal service',async()=>{
   assert.equal((await handler(request({body:'x'.repeat(65537)}))).status,413);
   assert.equal((await handler(request({body:'{'}))).status,400);assert.equal(calls,0);
 });
+test('an already-cancelled request releases its unread body without an upstream call',{timeout:1000},async t=>{
+  const controller=new AbortController();let output,cancelled=0,calls=0;
+  const body=new ReadableStream({start(value){output=value},cancel(){cancelled++}});
+  t.after(()=>{try{output.close()}catch{}});
+  const incoming=request({body,duplex:'half',signal:controller.signal});controller.abort();
+  const response=await forward(incoming,'https://internal.test','api/chat',{timeoutMs:25,fetchImpl:()=>{calls++;return sse()}});
+  assert.equal(response.status,503);assert.equal(cancelled,1);assert.equal(calls,0);
+});
 test('bridge stays offline for missing or invalid upstream configuration',async()=>{
   for(const config of [{},{...env,SAMSUNG_API_ORIGIN:'http://server.test'},{...env,SAMSUNG_API_ORIGIN:'https://user:secret@server.test'},{...env,SAMSUNG_GATEWAY_TOKEN:'short'},{...env,SUPABASE_URL:'https://evil.test'}]){
     const bridge=createBridge({env:config,fetchImpl:()=>{throw Error('Must not connect.');}});

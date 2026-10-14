@@ -37,10 +37,20 @@ jobs:
           node-version: 24.21.0
           cache: npm
       - run: npm ci
+      - name: Install service dependencies when present
+        run: |
+          for service in cloud/vercel-api cloud/vercel-gateway; do
+            if test -f "$service/package-lock.json"; then npm ci --prefix "$service"; fi
+          done
       - run: npm run build
       - run: npm run check:seo
       - run: npm test
       - run: npm audit --audit-level=high
+      - name: Audit service dependencies when present
+        run: |
+          for service in cloud/vercel-api cloud/vercel-gateway; do
+            if test -f "$service/package-lock.json"; then npm audit --prefix "$service" --audit-level=high; fi
+          done
       - run: bash -n self-host/deploy-reviewed.sh
 
   deploy:

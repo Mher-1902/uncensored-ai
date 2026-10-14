@@ -105,7 +105,7 @@ export function createGateway(options={}){
             const event=JSON.parse(data);const choice=event.choices?.[0];
             if(event.error)throw Error('The model stopped unexpectedly.');
             if(choice){const delta={};if(typeof choice.delta?.content==='string')delta.content=choice.delta.content;if(choice.delta?.reasoning_content)delta.reasoning_content='thinking';
-              if(!res.write(`data: ${JSON.stringify({choices:[{delta,finish_reason:choice.finish_reason||null}],usage:event.usage})}\n\n`))await Promise.race([once(res,'drain'),once(res,'close')]);
+              if(!res.write(`data: ${JSON.stringify({choices:[{delta,finish_reason:choice.finish_reason||null}],usage:event.usage})}\n\n`))await once(res,'drain',{signal:ctrl.signal});
             }else if(event.usage)res.write(`data: ${JSON.stringify({usage:event.usage})}\n\n`);
           }
           res.end();

@@ -42,7 +42,21 @@ build() {
     --property=CPUQuota=80% --property=MemoryMax=4G \
     --property=MemorySwapMax=0 --property=LimitCORE=0 \
     --property="EnvironmentFile=$HOME/.config/offscript/deploy.env" \
-    /usr/bin/bash -c 'set -e; export PATH="$PWD/.runtime/node/bin:/usr/local/bin:/usr/bin:/bin"; npm ci; npm run build; npm run check:seo; npm test; npm audit --audit-level=high'
+    /usr/bin/bash -c '
+      set -e
+      export PATH="$PWD/.runtime/node/bin:/usr/local/bin:/usr/bin:/bin"
+      npm ci
+      for service in cloud/vercel-api cloud/vercel-gateway; do
+        if test -f "$service/package-lock.json"; then npm ci --prefix "$service"; fi
+      done
+      npm run build
+      npm run check:seo
+      npm test
+      npm audit --audit-level=high
+      for service in cloud/vercel-api cloud/vercel-gateway; do
+        if test -f "$service/package-lock.json"; then npm audit --prefix "$service" --audit-level=high; fi
+      done
+    '
 }
 ready() {
   for attempt in $(seq 1 60); do

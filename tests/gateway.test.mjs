@@ -34,13 +34,27 @@ async function run(t,options={}){
   t.after(()=>{server.closeAllConnections();server.close()});
   const url=`http://127.0.0.1:${server.address().port}`;
   const send=(body=input,signal)=>fetch(`${url}/api/chat`,{method:'POST',headers,body:JSON.stringify(body),signal});
-  return {...mock,url,send};
+  return {...mock,url,send,server};
 }
 test('SSE preserves split UTF-8, CRLF and multi-line data',async()=>{
   const bytes=new TextEncoder().encode('data: 🌍\r\ndata: hello\r\n\r\ndata: [DONE]\n\n');
   const body=new ReadableStream({start(c){for(const byte of bytes)c.enqueue(Uint8Array.of(byte));c.close()}});
   const events=[];for await(const event of readEvents(body))events.push(event);
   assert.deepEqual(events,['🌍\nhello','[DONE]']);
+});
+test('SSE rejects an oversized complete line and cancels its reader',async()=>{
+  let cancelled=false;
+  const bytes=new TextEncoder().encode('data: '+'x'.repeat(1_048_577)+'\n\n');
+  const body=new ReadableStream({start(c){c.enqueue(bytes)},cancel(){cancelled=true}});
+  await assert.rejects(async()=>{for await(const event of readEvents(body))void event},/frame size/);
+  assert.equal(cancelled,true);
+});
+test('SSE bounds the aggregate data lines within one event',async()=>{
+  let cancelled=false;
+  const bytes=new TextEncoder().encode(('data: '+'x'.repeat(300_000)+'\n').repeat(4)+'\n');
+  const body=new ReadableStream({start(c){c.enqueue(bytes)},cancel(){cancelled=true}});
+  await assert.rejects(async()=>{for await(const event of readEvents(body))void event},/frame size/);
+  assert.equal(cancelled,true);
 });
 test('validates multi-turn history and rejects injected roles/settings',()=>{
   const result=validateRequest({...input,messages:[{role:'user',content:' Hi '},{role:'assistant',content:'Hello'},{role:'user',content:'Next'}]});assert.equal(result.messages[0].content,'Hi');
@@ -85,6 +99,20 @@ test('leaving cancels upstream inference and clears slot',async t=>{
   const app=await run(t,{hold:true});const ctrl=new AbortController();const promise=app.send(input,ctrl.signal);
   while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));ctrl.abort();await assert.rejects(promise);await new Promise(resolve=>setTimeout(resolve,20));
   assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
+});
+test('generation abort releases a slot waiting for downstream drain',{timeout:2000},async t=>{
+  const app=await run(t,{generationTimeout:40});let stalled=false;
+  // Model one unwritable response; no socket saturation or real inference.
+  app.server.prependListener('request',(req,res)=>{
+    if(req.url!=='/api/chat'||stalled)return;
+    const write=res.write.bind(res);
+    res.write=(...args)=>{const result=write(...args);if(String(args[0]).includes('Hello 🌍')){stalled=true;return false}return result};
+  });
+  const response=await app.send();assert.match(await response.text(),/took too long/);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(stalled,true);assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
+  assert.equal((await (await fetch(`${app.url}/api/health`)).json()).busy,false);
+  const next=await app.send();assert.equal(next.status,200);assert.match(await next.text(),/Hello 🌍/);
 });
 test('unknown routes return branded HTTP 404, not the chat app',async t=>{
   const app=await run(t);const missing=await fetch(`${app.url}/missing-page`);assert.equal(missing.status,404);assert.match(await missing.text(),/This page went offscript/);

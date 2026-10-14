@@ -21,6 +21,7 @@ async function bodyBytes(request, signal) {
   const cancelled = () => {void reader.cancel().catch(() => {});};
   signal.addEventListener('abort', cancelled, {once: true});
   try {
+    if (signal.aborted) throw Error('Request cancelled.');
     for (;;) {
       const {done, value} = await reader.read();
       if (done) break;
