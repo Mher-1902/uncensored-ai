@@ -19,6 +19,8 @@ Vercel services preserve the original public request path. An app-wide rewrite s
 
 ## Environment and authentication
 
+The current public homepage is `https://offscript-ai.vercel.app/`. Set production `SITE_ORIGIN=https://offscript-ai.vercel.app` explicitly so Vercel's generated deployment aliases do not become canonical. Ordinary builds default to this homepage; a supplied `SITE_ORIGIN` still supports a future domain change. HTML, sitemap and robots templates resolve the same origin during the build, so they cannot retain the retired Sites hostname merely because the default changes. Preview builds remain noindex/disallow-all. Publishing these files does not establish Google Search indexing.
+
 An earlier source config points at the erased server's public hostname. The more specific `/config.json` rewrite selects the API service, which publishes only same-origin `/api` and public model metadata. This works during `vercel dev` as well as deployments; no internal binding or credential appears in browser configuration. Vite uses its multi-page mode to preserve actual 404 responses instead of a catch-all HTML fallback.
 
 | Variable | Where | Purpose |

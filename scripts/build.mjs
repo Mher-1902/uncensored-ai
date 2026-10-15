@@ -2,7 +2,7 @@ import {build} from 'vite';
 import {readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-const defaultOrigin='https://offscript-ephemeral.sukiasyanmher7.chatgpt.site';
+const defaultOrigin='https://offscript-ai.vercel.app';
 const siteOrigin=new URL(process.env.SITE_ORIGIN||defaultOrigin).origin;
 await build();
 await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',emptyOutDir:true}});
@@ -12,8 +12,8 @@ await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',empty
   html=html.replace('<div id="root"></div>',`<div id="root">${render()}</div>`).replaceAll('__SITE_ORIGIN__',siteOrigin);
   await writeFile('dist/index.html',html);
   const xmlOrigin=siteOrigin.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
-  await writeFile('dist/sitemap.xml',(await readFile('public/sitemap.xml','utf8')).replaceAll(defaultOrigin,xmlOrigin));
-  await writeFile('dist/robots.txt',(await readFile('public/robots.txt','utf8')).replaceAll(defaultOrigin,siteOrigin));
+  await writeFile('dist/sitemap.xml',(await readFile('public/sitemap.xml','utf8')).replaceAll('__SITE_ORIGIN__',xmlOrigin));
+  await writeFile('dist/robots.txt',(await readFile('public/robots.txt','utf8')).replaceAll('__SITE_ORIGIN__',siteOrigin));
   // A configured public API origin needs both browser permission and server CORS.
   const apiBase=process.env.SITE_API_BASE||JSON.parse(await readFile('dist/config.json','utf8')).apiBase;
   if(apiBase){
