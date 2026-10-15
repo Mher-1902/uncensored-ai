@@ -1,6 +1,7 @@
 export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean };
-import {readEvents} from './stream';
-export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string };
+import {readEvents} from './stream.ts';
+export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
+export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null };
 export async function loadConfig():Promise<SiteConfig>{
   const response=await fetch('/config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Could not load the site configuration.');
@@ -11,6 +12,11 @@ export async function loadConfig():Promise<SiteConfig>{
     if(url.origin!==location.origin&&url.protocol!=='https:')throw Error('The model connection must use HTTPS.');
     if(url.username||url.password||url.search||url.hash)throw Error('Invalid model connection.');
     config.apiBase=url.href.replace(/\/$/,'');
+  }
+  if(config.auth){
+    const url=new URL(config.auth.url);
+    if(url.origin!==config.auth.url||url.protocol!=='https:'||!/^[a-z0-9]+\.supabase\.co$/.test(url.hostname)||!/^sb_publishable_[A-Za-z0-9_-]{16,256}$/.test(config.auth.publishableKey))throw Error('Invalid account configuration.');
+    if(!Array.isArray(config.auth.providers)||config.auth.providers.some((provider:unknown)=>provider!=='google'&&provider!=='github')||typeof config.auth.emailEnabled!=='boolean')throw Error('Invalid account configuration.');
   }
   return config;
 }
@@ -44,9 +50,13 @@ export async function checkModel(config:SiteConfig):Promise<boolean>{
   if(config.apiBase){try{const r=await fetch(`${config.apiBase}/health`,{cache:'no-store',signal:AbortSignal.timeout(8000)});return r.ok&&(await r.json()).ready===true}catch{return false}}
   return Boolean(config.space);
 }
-export async function reply(config:SiteConfig,messages:Message[],length:number,reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void){
+export async function reply(config:SiteConfig,messages:Message[],length:number,reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void,accessToken?:string|null){
   if(!config.apiBase){if(config.space)return cloudReply(config.space,messages,length,signal,onText,onStatus);throw Error('The model is not connected yet. No message was sent.')}
-  const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers:{'Content-Type':'application/json','X-Offscript-Client':'web'},body:JSON.stringify({messages:messages.map(({role,content})=>({role,content})),maxTokens:length,reasoned}),signal,cache:'no-store'});
+  if(config.requireAuth&&!accessToken)throw Error('Sign in before sending a message.');
+  if(accessToken&&new URL(config.apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
+  const headers:Record<string,string>={'Content-Type':'application/json','X-Offscript-Client':'web'};
+  if(accessToken)headers.Authorization=`Bearer ${accessToken}`;
+  const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:messages.map(({role,content})=>({role,content})),maxTokens:length,reasoned}),signal,cache:'no-store'});
   if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.error||`The model is unavailable (${response.status}).`)}
   if(!response.body)throw Error('The model returned no stream.');
   let text='',finished=false;

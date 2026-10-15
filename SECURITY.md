@@ -1,11 +1,11 @@
 # Security requirements
 
-The current chat product has no accounts, relational database or saved conversations. Its browser and request memory are ephemeral. There are no database tables on which to apply RLS today. Adding persistence requires a separate reviewed data-design change.
+The Vercel chat path requires Supabase Auth accounts. Chat messages remain in page/request memory and are never stored with the account session; the SDK keeps sign-in state in sessionStorage for the tab. No application database tables or saved conversations exist. Supabase manages its own protected auth schema. Every new application table still requires reviewed RLS before exposure; adding chat/profile persistence requires a separate data-design change.
 
 ## Current boundaries
 
 - Expose the gateway through HTTPS; keep inference, slot administration and monitoring private.
-- Validate roles, reply budgets, request size and allowed origins before inference. The client header and CORS rules are request controls; the public chat API is anonymous.
+- Validate roles, reply budgets, request size and allowed origins before inference. The client header and CORS rules are request controls. The Vercel gateway additionally verifies Supabase sessions and replaces them with its separate Samsung service credential. Keep the native Samsung service private and credential-protected before attaching an upstream.
 - Erase inference state between requests, stop accepting inference if cleanup fails, and keep slot files on private tmpfs.
 - Keep credentials outside Git and frontend assets. Use restricted deployment credentials, pinned host identity, least-privilege workflow permissions and reviewed dependencies.
 - Preserve model memory/CPU limits, zero application swap, disabled core dumps and thermal stop behavior. No automatic restart after a thermal shutdown.

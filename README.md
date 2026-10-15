@@ -6,9 +6,9 @@ The [Docker backend](docs/DOCKER.md) runs on the Samsung independently of the Ma
 
 The [scaling decisions](docs/SCALING.md) record the selected managed Supabase/PostgreSQL direction and researched tools for accounts, RLS, testing, security, monitoring and future GPU workers.
 
-The proposed [Vercel services layout](docs/VERCEL.md) hosts the website and an internal authenticated API bridge. It keeps inference in Samsung Docker and separate GPU infrastructure, and awaits confirmation before deployment.
+The confirmed [Vercel services layout](docs/VERCEL.md) hosts the website and an internal authenticated API bridge. It keeps inference in Samsung Docker and separate GPU infrastructure, and awaits hosting/account configuration before deployment.
 
-Offscript is an ephemeral AI chat website with the supplied anonymous figure/logo, a charcoal-and-lime visual theme, expressive typography, streaming replies, a custom 404 page and search-engine metadata. Conversations stay in the current browser page and request memory; there is no account system, chat database, saved conversation history or analytics.
+Offscript is an ephemeral AI chat website with the supplied anonymous figure/logo, a charcoal-and-lime visual theme, expressive typography, streaming replies, a custom 404 page and search-engine metadata. Conversations stay in the current browser page and request memory; there is no chat database, saved conversation history or analytics. Public registration and login use Supabase Auth; see the [account setup](docs/ACCOUNTS.md) for required hosting/provider configuration.
 
 **Handoff checkpoint: October 4, 2026.** The owner asked us to stop development, document the work and push everything to GitHub before retiring the development Mac. This README is the starting point for the next laptop or Codex session. Do not assume the public frontend has already received the latest model connection.
 

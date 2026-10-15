@@ -6,6 +6,7 @@ import {createBridge} from '../../cloud/vercel-gateway/index.mjs';
 import {createAppHandler} from '../../cloud/vercel-api/handler.mjs';
 import {forward} from '../../cloud/vercel-gateway/proxy.mjs';
 import configHandler from '../../cloud/vercel-api/index.mjs';
+import {publicConfig} from '../../cloud/vercel-api/config.mjs';
 const require = createRequire(new URL('../../cloud/vercel-gateway/package.json', import.meta.url));
 const {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} = await import(require.resolve('jose'));
 
@@ -20,6 +21,21 @@ test('public configuration uses same-domain API paths without leaking the old ho
   const config=await response.json();assert.equal(config.apiBase,'/api');assert.equal(config.space,null);
   assert.doesNotMatch(JSON.stringify(config),/tail8c9a09|GATEWAY_URL|TOKEN/);
   assert.equal((await configHandler.fetch(new Request('https://app.test/config.json',{method:'POST'}))).status,405);
+});
+test('account configuration publishes the browser key and explicitly enabled login methods only',()=>{
+  const config=publicConfig({model:'Dummy',modelUrl:'https://model.test',internal:'must-not-publish'}, {
+    SUPABASE_URL:'https://project.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_'+ 'a'.repeat(24),
+    SUPABASE_AUTH_PROVIDERS:'google,github,google,other',SUPABASE_EMAIL_ENABLED:'true',SAMSUNG_GATEWAY_TOKEN:'dummy-private-credential',
+  });
+  assert.equal(config.requireAuth,true);assert.deepEqual(config.auth.providers,['google','github']);assert.equal(config.auth.emailEnabled,true);
+  assert.doesNotMatch(JSON.stringify(config),/must-not-publish|dummy-private-credential/);
+});
+test('missing account setup or a non-publishable key leaves sign-in unavailable',()=>{
+  for(const key of [undefined,'sb_secret_'+ 'a'.repeat(24),'legacy.jwt.value']) {
+    assert.equal(publicConfig({},{SUPABASE_URL:'https://project.supabase.co',SUPABASE_PUBLISHABLE_KEY:key}).auth,null);
+  }
+  const config=publicConfig({},{SUPABASE_URL:'https://project.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_'+ 'a'.repeat(24)});
+  assert.deepEqual(config.auth.providers,[]);assert.equal(config.auth.emailEnabled,false);
 });
 
 test('app reads a late runtime binding and preserves its URL base path',async()=>{
