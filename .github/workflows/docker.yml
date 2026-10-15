@@ -19,6 +19,8 @@ jobs:
         with:
           persist-credentials: false
       - run: docker compose config --quiet
+      - name: Exercise builds from private source permissions
+        run: chmod -R go-rwx server src/stream.ts self-host/thermal.mjs docker/Caddyfile
       - name: Validate the pinned ingress configuration
         run: |
           docker build -f docker/ingress.Dockerfile -t offscript-ingress:ci .

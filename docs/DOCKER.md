@@ -8,6 +8,8 @@ The gateway shares the model's private network namespace so inference and slot e
 
 Container filesystems are read-only, capabilities are dropped, core dumps are disabled, and container logs rotate. All application containers use `offscript-containers.slice`, whose `MemorySwapMax=0` enforces zero swap in the kernel. Docker's equal RAM/swap settings alone left `memory.swap.max` unlimited on this rootless host; verify the effective parent limit rather than relying on image configuration. The gateway and proxy use non-root container users; the model's container UID 0 maps to the non-root host account through the required rootless daemon. No application container mounts the Docker socket. Add narrowly scoped outbound access when authenticated GPU/database integration requires it.
 
+Runtime source/configuration files are copied with ownership matching the gateway and ingress users. This lets those non-root processes read private checkouts with mode 0600 files and 0700 directories, without widening source permissions on the host. Docker CI deliberately makes these build inputs private before building and checking the runtime images.
+
 The model requires working thermal readings and stops at 85C or when sensors disappear. It has no automatic hot restart. Boot preflight requires AC power, adequate RAM and a CPU below 70C. Rootless Docker must report cgroup v2/systemd and enforce the configured CPU/memory limits. Inspect these on the actual host; configuration files alone do not establish enforcement.
 
 ## Prepare and validate
