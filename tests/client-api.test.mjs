@@ -12,7 +12,7 @@ test('signed-in client sends its session only to the same-origin API and preserv
   location(t);let calls=0,text='';
   t.mock.method(globalThis,'fetch',async(url,options)=>{
     calls++;assert.equal(url,'https://app.test/api/chat');assert.equal(options.headers.Authorization,'Bearer dummy-session');
-    assert.deepEqual(JSON.parse(options.body),{messages:[{role:'user',content:'Hello'}],maxTokens:256,reasoned:false});
+    assert.deepEqual(JSON.parse(options.body),{messages:[{role:'user',content:'Hello'}],maxTokens:256,mode:'fast',reasoned:false});
     return new Response('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\ndata: [DONE]\n\n');
   });
   await reply({apiBase:'https://app.test/api',space:null,requireAuth:true},message,256,false,new AbortController().signal,value=>{text=value},()=>{},'dummy-session');

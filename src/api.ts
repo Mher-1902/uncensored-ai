@@ -56,7 +56,7 @@ export async function reply(config:SiteConfig,messages:Message[],length:number,r
   if(accessToken&&new URL(config.apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
   const headers:Record<string,string>={'Content-Type':'application/json','X-Offscript-Client':'web'};
   if(accessToken)headers.Authorization=`Bearer ${accessToken}`;
-  const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:messages.map(({role,content})=>({role,content})),maxTokens:length,reasoned}),signal,cache:'no-store'});
+  const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:messages.map(({role,content})=>({role,content})),maxTokens:length,mode:reasoned?'deep':'fast',reasoned}),signal,cache:'no-store'});
   if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.error||`The model is unavailable (${response.status}).`)}
   if(!response.body)throw Error('The model returned no stream.');
   let text='',finished=false,limited=false;
@@ -71,6 +71,6 @@ export async function reply(config:SiteConfig,messages:Message[],length:number,r
     if(event.choices?.[0]?.finish_reason==='length')limited=true;
   }
   if(!finished)throw Error('The connection ended before the reply finished. Please try again.');
-  if(!text)throw Error('The model produced no final answer. Try Direct mode or a longer reply.');
+  if(!text)throw Error('The model produced no final answer. Try Fast mode or a longer reply.');
   return {limited};
 }

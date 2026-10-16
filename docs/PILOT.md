@@ -16,6 +16,8 @@ Protocol 2 acknowledges `[DONE]` only after request-state cleanup succeeds. Brok
 
 ## Next increments
 
+The workspace removes decorative scroll motion and the large anonymous-figure image. Responses render immediately in green IBM Plex Mono; Fast is the default, with Deep Think as an explicit choice. Model health is checked on entry and when opening information, instead of polling every visitor every 30 seconds. The client sends explicit mode plus its matching legacy flag while the serving gateway transitions.
+
 1. Minimal account/acceptance/usage records with default-deny RLS, restricted field writes and atomic admission. Keep chat content in page/request memory, outside durable queues, database, metrics and logs.
 2. A simple charcoal/Matrix-green workspace, Fast default, explicit Deep Think, accessible immediate streaming, Stop/Copy/Clear and no history sidebar. Keep the working name `offscript_`.
 3. Public privacy/terms pages and server-enforced versioned acknowledgement, with real operator/contact facts before publication. Age/guardian eligibility is a separate server-side gate.
