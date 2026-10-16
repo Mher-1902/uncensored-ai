@@ -1,5 +1,7 @@
 # Offscript — project handoff
 
+**Current model profile (October 16, 2026):** [HauhauCS Qwen3.5 2B Aggressive, Q4_K_M](docs/MODEL-PROFILE.md). The frontend uses `https://offscript-ai.vercel.app/`, Supabase GitHub sign-in, and the protected Samsung Docker backend. The October 4 handoff below is historical; use the current profile and delivery documents for new work.
+
 For ongoing changes, use the [reviewed delivery workflow](docs/DELIVERY.md), [security requirements](SECURITY.md) and [infrastructure roadmap](docs/ROADMAP.md). The handoff below records the earlier machine state; current deployments require fresh validation.
 
 The [Docker backend](docs/DOCKER.md) runs on the Samsung independently of the Mac. Docker Desktop is optional tooling; server development and serving stay on the Samsung.
