@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Offscript Aralez</title>
+  <rect width="64" height="64" rx="14" fill="#141819"/>
+  <g fill="#fff2db">
+    <path d="M10 38C16 27 27 15 39 7L36 21L47 28L57 30C56 39 49 42 40 40L34 39L30 44L27 40L31 27C24 27 17 31 10 38Z"/>
+    <path d="M8 55C9 44 18 34 28 30L24 41L37 55Z"/>
+  </g>
+</svg>
