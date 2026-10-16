@@ -1,5 +1,7 @@
 # Stack and scaling decisions
 
+**October 16 capacity update:** the owner now targets 50,000 users with no provider spending. Use the [zero-budget capacity decision](ZERO-BUDGET-SCALE.md) for workload scenarios, verified free-tier boundaries and the proposed browser WebGPU inference experiment. This is a feasibility plan, not a deployed 50,000-user capacity claim. Earlier paid-GPU scaling options below require a future change to the budget constraint.
+
 Researched against official project documentation on October 13, 2026. These are recommendations for this product and hardware, rather than an independent benchmark ranking. Offscript remains a working name; Cue integration comes later.
 
 Development and backend execution belong on the Samsung. The Mac provides remote management. Docker Desktop may stay installed and stopped; production must not depend on a Mac process, mounted Mac directory, SSH forwarding session or desktop Docker context.
