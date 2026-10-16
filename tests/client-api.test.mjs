@@ -28,3 +28,24 @@ test('an account session is never sent to a separately configured model origin',
   await assert.rejects(reply({apiBase:'https://model.test/api',space:null,requireAuth:true},message,256,false,new AbortController().signal,()=>{},()=>{},'dummy-session'),/own API/);
   assert.equal(calls,0);
 });
+test('a reply capped by length preserves its text and returns a per-answer limit notice',async t=>{
+  const statuses=[];let text='';
+  t.mock.method(globalThis,'fetch',async()=>new Response(
+    'data: {"choices":[{"delta":{"content":"The answer starts here"}}]}\n\n'+
+    'data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n'+
+    'data: {"choices":[],"usage":{"completion_tokens":256}}\n\n'+
+    'data: [DONE]\n\n'));
+  const result=await reply({apiBase:'https://app.test/api',space:null},message,256,false,new AbortController().signal,value=>{text=value},value=>statuses.push(value));
+  assert.equal(text,'The answer starts here');
+  assert.deepEqual(result,{limited:true});
+  assert.equal(statuses.some(value=>/incomplete|limit|longer/i.test(value)),false);
+});
+test('a normal end does not mark an answer as capped',async t=>{
+  t.mock.method(globalThis,'fetch',async()=>new Response('data: {"choices":[{"delta":{"content":"Done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'));
+  const result=await reply({apiBase:'https://app.test/api',space:null},message,256,false,new AbortController().signal,()=>{},()=>{});
+  assert.deepEqual(result,{limited:false});
+});
+test('a broken connection is still an error even when a length event arrived',async t=>{
+  t.mock.method(globalThis,'fetch',async()=>new Response('data: {"choices":[{"delta":{"content":"Partial"},"finish_reason":"length"}]}\n\n'));
+  await assert.rejects(reply({apiBase:'https://app.test/api',space:null},message,256,false,new AbortController().signal,()=>{},()=>{}),/connection ended/);
+});

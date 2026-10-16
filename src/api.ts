@@ -1,4 +1,4 @@
-export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean };
+export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean; limited?:boolean };
 import {readEvents} from './stream.ts';
 export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
 export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null };
@@ -51,7 +51,7 @@ export async function checkModel(config:SiteConfig):Promise<boolean>{
   return Boolean(config.space);
 }
 export async function reply(config:SiteConfig,messages:Message[],length:number,reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void,accessToken?:string|null){
-  if(!config.apiBase){if(config.space)return cloudReply(config.space,messages,length,signal,onText,onStatus);throw Error('The model is not connected yet. No message was sent.')}
+  if(!config.apiBase){if(config.space){await cloudReply(config.space,messages,length,signal,onText,onStatus);return {limited:false}}throw Error('The model is not connected yet. No message was sent.')}
   if(config.requireAuth&&!accessToken)throw Error('Sign in before sending a message.');
   if(accessToken&&new URL(config.apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
   const headers:Record<string,string>={'Content-Type':'application/json','X-Offscript-Client':'web'};
@@ -59,7 +59,7 @@ export async function reply(config:SiteConfig,messages:Message[],length:number,r
   const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:messages.map(({role,content})=>({role,content})),maxTokens:length,reasoned}),signal,cache:'no-store'});
   if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.error||`The model is unavailable (${response.status}).`)}
   if(!response.body)throw Error('The model returned no stream.');
-  let text='',finished=false;
+  let text='',finished=false,limited=false;
   for await(const data of readEvents(response.body)){
     if(data==='[DONE]'){finished=true;break}
     const event=JSON.parse(data);
@@ -68,8 +68,9 @@ export async function reply(config:SiteConfig,messages:Message[],length:number,r
     const delta=event.choices?.[0]?.delta;
     if(delta?.reasoning_content)onStatus('Thinking through your question…');
     if(delta?.content){text+=delta.content;onStatus('Writing a reply…');onText(text)}
-    if(event.choices?.[0]?.finish_reason==='length')onStatus('Reply may be incomplete. Choose a longer reply if needed.');
+    if(event.choices?.[0]?.finish_reason==='length')limited=true;
   }
   if(!finished)throw Error('The connection ended before the reply finished. Please try again.');
   if(!text)throw Error('The model produced no final answer. Try Direct mode or a longer reply.');
+  return {limited};
 }
