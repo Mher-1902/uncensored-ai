@@ -148,3 +148,49 @@ test('oversized JSON receives a bounded rejection before inference',async t=>{
   }
   assert.equal(app.calls.length,0);
 });
+
+test('explicit modes and the transition field agree before inference',async t=>{
+  assert.equal(validateRequest({...input,reasoned:undefined,mode:'fast'}).mode,'fast');
+  assert.equal(validateRequest({...input,reasoned:undefined,mode:'deep'}).mode,'deep');
+  assert.equal(validateRequest({...input,reasoned:true}).mode,'deep');
+  for(const settings of [{mode:'research'},{mode:'other'},{mode:'deep',reasoned:false},{mode:'fast',reasoned:true}]) {
+    assert.throws(()=>validateRequest({...input,...settings}),/reply settings/);
+  }
+  const app=await run(t);
+  const response=await app.send({...input,reasoned:undefined,mode:'deep'});
+  assert.equal(response.status,200);await response.text();
+  const request=app.calls.find(call=>call.path==='/v1/chat/completions').body;
+  assert.equal(request.chat_template_kwargs.enable_thinking,true);
+  assert.equal(request.max_tokens,1280);
+});
+
+test('completion is not acknowledged until model state disposal finishes',async t=>{
+  let disposals=0,finishCleanup;
+  const cleanup=new Promise(resolve=>{finishCleanup=resolve});
+  const engine={ready:async()=>true,prepare:async()=>({}),
+    generate:async()=>new Response('data: {"choices":[{"delta":{"content":"Answer"}}]}\n\ndata: [DONE]\n\n'),
+    dispose:async()=>{if(++disposals===2)await cleanup;return true}};
+  const app=await run(t,{engine});
+  const response=await app.send();let ended=false;
+  const text=response.text().then(value=>{ended=true;return value});
+  while(disposals<2)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ended,false);
+  finishCleanup();assert.match(await text,/Answer[\s\S]*\[DONE\]/);
+});
+
+test('failed final disposal withholds DONE and marks the worker unavailable',async t=>{
+  let disposals=0;
+  const engine={ready:async()=>true,prepare:async()=>({}),
+    generate:async()=>new Response('data: {"choices":[{"delta":{"content":"Answer"}}]}\n\ndata: [DONE]\n\n'),
+    dispose:async()=>++disposals===1};
+  const app=await run(t,{engine});
+  const response=await app.send();const text=await response.text();
+  assert.match(text,/needs to restart/);assert.doesNotMatch(text,/\[DONE\]/);
+  assert.equal((await fetch(`${app.url}/api/health`)).status,503);
+});
+
+test('adapter rejects credential-bearing, non-loopback and non-HTTP listeners',()=>{
+  for(const inference of ['https://127.0.0.1:8081','http://model.internal:8081','http://u:p@localhost:8081','file:///tmp/model','http://localhost:8081/private']) {
+    assert.throws(()=>createGateway({inference}),/loopback HTTP origin/);
+  }
+});

@@ -1,5 +1,7 @@
 # Capacity decision: 50,000 users with a $0 provider budget
 
+**Superseded October 17:** the owner selected normal server-powered inference with no visitor downloads. See [the active pilot](PILOT.md). This document retains the earlier research and is not the implementation decision.
+
 October 16, 2026. Status: researched architecture proposal, **not deployed or load-certified**. The owner requires no paid providers, trials, hardware purchases or automatic overage. This document supersedes earlier assumptions that a free GPU can underpin public growth. The existing Samsung development deployment remains operational.
 
 ## Decision
