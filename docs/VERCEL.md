@@ -38,6 +38,8 @@ Chat requires a signed-in Supabase access token. The bridge verifies its signatu
 
 The bridge replaces the user token with the Samsung service credential. Configure that credential on both ends **before** making any Samsung endpoint reachable to Vercel. Private Tailscale IPs cannot be used as Vercel's upstream without a separately configured network connection. The previous erased server's public Funnel hostname is not a current endpoint. Missing or invalid bridge configuration returns offline/503 and sends no prompt to a model.
 
+The bridge removes surrounding whitespace from `SAMSUNG_GATEWAY_TOKEN` before validating and forwarding it, so a trailing newline copied from a terminal does not leave the model offline. The resulting credential must still contain 32–256 letters, digits, underscores or hyphens; whitespace inside a credential is rejected. User-session verification is unchanged.
+
 Requests have a 64 KiB JSON limit. Outgoing paths and forwarded headers are fixed; cookies, browser origin and arbitrary proxy targets are not forwarded. Redirects are refused. Streams preserve cancellation across both hops, and upstream credentials/response cookies are not returned to the browser. The public API deadline is 280 seconds and bridge deadline 270 seconds, below each configured 300-second Vercel function limit. Those deadlines do not certify Reasoned-mode completion on the Samsung's CPU. [Function duration](https://vercel.com/docs/functions/configuring-functions/duration).
 
 ## Validation on the Samsung

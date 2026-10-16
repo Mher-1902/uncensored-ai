@@ -73,7 +73,7 @@ test('an already-cancelled request releases its unread body without an upstream 
   assert.equal(response.status,503);assert.equal(cancelled,1);assert.equal(calls,0);
 });
 test('bridge stays offline for missing or invalid upstream configuration',async()=>{
-  for(const config of [{},{...env,SAMSUNG_API_ORIGIN:'http://server.test'},{...env,SAMSUNG_API_ORIGIN:'https://user:secret@server.test'},{...env,SAMSUNG_GATEWAY_TOKEN:'short'},{...env,SUPABASE_URL:'https://evil.test'}]){
+  for(const config of [{},{...env,SAMSUNG_API_ORIGIN:'http://server.test'},{...env,SAMSUNG_API_ORIGIN:'https://user:secret@server.test'},{...env,SAMSUNG_GATEWAY_TOKEN:'short'},{...env,SAMSUNG_GATEWAY_TOKEN:' \r\n '},{...env,SAMSUNG_GATEWAY_TOKEN:'s'.repeat(20)+'\n'+'s'.repeat(20)},{...env,SUPABASE_URL:'https://evil.test'}]){
     const bridge=createBridge({env:config,fetchImpl:()=>{throw Error('Must not connect.');}});
     assert.equal((await bridge(request())).status,503);
   }
@@ -86,6 +86,18 @@ test('bridge requires a user session and replaces it with the Samsung service cr
   assert.equal((await bridge(request())).status,401);assert.equal(calls,0);
   const response=await bridge(request({headers:{...headers,Authorization:'Bearer valid-user'}}));
   assert.equal(response.status,200);assert.match(await response.text(),/\[DONE\]/);assert.equal(calls,1);
+});
+test('clipboard whitespace around a service credential is removed before validation and forwarding',async()=>{
+  for(const configured of [env.SAMSUNG_GATEWAY_TOKEN+'\n',' \t'+env.SAMSUNG_GATEWAY_TOKEN+'\r\n']){
+    let calls=0;
+    const bridge=createBridge({env:{...env,SAMSUNG_GATEWAY_TOKEN:configured},verify:async token=>{
+      assert.equal(token,'Bearer valid-user');
+    },fetchImpl:async(_url,options)=>{
+      calls++;assert.equal(options.headers.Authorization,`Bearer ${env.SAMSUNG_GATEWAY_TOKEN}`);return sse();
+    }});
+    const response=await bridge(request({headers:{...headers,Authorization:'Bearer valid-user'}}));
+    assert.equal(response.status,200);assert.match(await response.text(),/\[DONE\]/);assert.equal(calls,1);
+  }
 });
 test('bridge forwards readiness only and never routes model administration',async()=>{
   let calls=0;const bridge=createBridge({env,verify:async()=>{},fetchImpl:async(url)=>{calls++;assert.equal(url.pathname,'/api/health');return Response.json({ready:true,queued:0,busy:false});}});
