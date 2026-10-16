@@ -7,7 +7,7 @@ import {timingSafeEqual} from 'node:crypto';
 import {readEvents} from '../src/stream.ts';
 
 const root=resolve(fileURLToPath(new URL('../dist/',import.meta.url)));
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.woff2':'font/woff2','.xml':'application/xml','.txt':'text/plain'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.xml':'application/xml','.txt':'text/plain'};
 class RequestError extends Error{constructor(status,message){super(message);this.status=status}}
 export function validateRequest(value){
   if(!value||typeof value!=='object'||!Array.isArray(value.messages)||!value.messages.length)throw new RequestError(400,'Send a message first.');
