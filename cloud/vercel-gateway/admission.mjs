@@ -7,7 +7,7 @@ import {AccountError} from './account-store.mjs';
 import {bodyJSON,json} from './proxy.mjs';
 
 const workerFailure = status => json([400,401,403,413,415,422,429,503].includes(status) ? status : 502,
-  {error: status === 422 ? 'This conversation exceeds the model context. Shorten the reply or clear the chat.' : 'The model could not complete this request. Please try again.'});
+  {error: status === 422 ? 'This conversation has filled the model context. Start a new chat for another question.' : 'The model could not complete this request. Please try again.'});
 
 export async function admittedChat(request, {user,store,origin,credential,fetchImpl=fetch,defer=waitUntil}) {
   const input = validateRequest(await bodyJSON(request));

@@ -20,7 +20,7 @@ The Samsung in Latvia currently runs the CPU LLM and private gateway and is stil
 ## Execution order
 
 1. Complete and visually verify the current small UI cleanup; release it from the deployed UI branch without pulling in unactivated backend work.
-2. Remove manual answer-length controls and implement/test automatic completion handling. Preserve partial text on interruption and never silently claim a complete answer.
+2. Automatic answer continuation is being implemented on codex/complete-responses, together with exact assistant-prefix validation, partial-text preservation and removal of manual length controls. Validate the pinned inference runtime and roll out the native gateway first; the live frontend must not call an unsupported worker.
 3. Benchmark the existing model/runtime under bounded resources; separate first-token, prefill, decode and queue latency. Apply only measured changes with thermal limits and rollback.
 4. Integrate staged backend/account work with the accepted UI before any deployment. Never redeploy the old Matrix design from an older backend branch.
 5. Account/acceptance/usage interface, final truthful legal pages, provider-compatible restricted database role, controlled admissions, worker recovery and metadata retention.
@@ -37,3 +37,9 @@ The Samsung in Latvia currently runs the CPU LLM and private gateway and is stil
 Append new requests here with a short description and date. Promote them into the active sequence deliberately rather than discarding current work.
 
 - No additional requests queued yet; the October 17 response-completion, latency and terminal-style requests are active release requirements above.
+
+## October 17 latency experiment
+
+Disposable offline container using the same pinned runtime, Q4_K_M model, two threads, 4096 context and synthetic two-sentence prompt. Production container was unchanged. At 0.8 CPU, warm samples measured ~4.96–4.98 seconds to first text and ~3.10–3.13 decode tokens/sec. At 1.2 CPU, two samples measured ~3.27 seconds and ~4.72–4.75 tokens/sec; peak 74°C over the run. This is a small controlled comparison, not sustained-load or p95 evidence. A preceding 1.6 CPU run aborted on a combined resource guard and produced no valid 1.6 result. Do not remove the thermal guard or claim a measured 1.6 benefit. Validate sustained 1.2 CPU behavior before any production limit change.
+
+Account-control integration remains feature-gated. Automatic continuation currently represents several worker segments; logical-answer quota accounting must be reconciled before enabling pilot admissions, so a long answer does not silently consume a quota once per segment.

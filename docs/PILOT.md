@@ -25,3 +25,12 @@ The owner requested restoration of the original picture, layout, background and 
 5. A measured, capped GPU proposal when demand warrants it. Target Fast warm p95 first text ≤3 seconds and median decode ≥15 tokens/second on chosen hardware; current Samsung measurements do not meet this target. Deep Think must show a quality benefit and terminate reliably before broad claims.
 
 Every change uses a branch, PR, appropriate checks and a rollback path. Existing production remains intact while replacements are validated. The deeper audit and external Grafana setup remain deferred; routine authentication, RLS, validation and dependency checks are release requirements.
+
+
+## Automatic answer completion increment
+
+The API-backed website no longer asks visitors to choose a reply length. It generates bounded 256-token visible-answer segments, then automatically continues the exact assistant prefix when the model reports `finish_reason: length`. The next segment is an assistant continuation, not an invented user message. Deep Think has an explicit 256-token thinking budget on the pinned runtime; later segments continue visible content without restarting hidden reasoning. Template token accounting uses the same continuation options as generation and adapts the final segment to the remaining 4,096-token context. Stop, network failure, quotas and context exhaustion remain real limits; partial text stays visible and is never passed off as a confirmed complete answer.
+
+This increment integrates the approved illustrated interface with staged cancellation/account code. Account enforcement remains disabled pending provisioning, policy/eligibility/recovery and continuation-aware quota accounting. Do not enable it simply because the code builds. Native gateway deployment must precede the new frontend. Existing browser chat tabs retain their loaded code and must not be force-reloaded.
+
+Validation: both build targets/SEO, 64 Node tests and 4 Python tests passed in the offline Samsung sandbox (peak 67°C). A separate disposable model instance verified the actual pinned runtime's assistant continuation contract and a 16-token test thinking budget ending in the correct arithmetic answer, with slot erasure between requests (peak 66°C). This is a protocol check, not a model-quality or multi-user benchmark.

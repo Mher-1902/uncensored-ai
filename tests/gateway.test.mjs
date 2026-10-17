@@ -13,7 +13,7 @@ function fixture(options={}){
     if(path.startsWith('/slots/'))return new Response('{}',{status:options.failErase?503:200});
     if(path==='/health')return new Response('{}',{status:options.offline?503:200});
     if(path==='/apply-template')return Response.json({prompt:'hello'});
-    if(path==='/tokenize')return Response.json({tokens:Array(options.long?4090:8).fill(1)});
+    if(path==='/tokenize')return Response.json({tokens:Array(options.long?4090:options.tokens??8).fill(1)});
     if(path==='/v1/chat/completions'){
       busy++;maxBusy=Math.max(busy,maxBusy);
       const encoder=new TextEncoder();let finished=false;
@@ -167,7 +167,8 @@ test('explicit modes and the transition field agree before inference',async t=>{
   assert.equal(response.status,200);await response.text();
   const request=app.calls.find(call=>call.path==='/v1/chat/completions').body;
   assert.equal(request.chat_template_kwargs.enable_thinking,true);
-  assert.equal(request.max_tokens,1280);
+  assert.equal(request.max_tokens,512);
+  assert.equal(request.reasoning_budget_tokens,256);
 });
 
 test('completion is not acknowledged until model state disposal finishes',async t=>{
@@ -242,4 +243,25 @@ test('a disconnected tracked stream retains a cancelled receipt rather than repo
   const response=await fetch(`${app.url}/api/cancel`,{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({requestId,workerId})});
   assert.equal((await response.json()).control.outcome,'cancelled');
   assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
+});
+
+test('continuation requires an assistant prefix and preserves its exact whitespace',()=>{
+  const prefix='Code:\n```js\n  ';
+  const data={...input,continuation:true,messages:[{role:'user',content:'Code?'},{role:'assistant',content:prefix}]};
+  assert.equal(validateRequest(data).messages[1].content,prefix);
+  for(const value of [{...data,continuation:'yes'},{...data,continuation:false},{...data,messages:input.messages},{...data,mode:'deep',reasoned:true}])assert.throws(()=>validateRequest(value));
+});
+test('template accounting and generation use the same assistant continuation contract',async t=>{
+  const app=await run(t,{tokens:4000});
+  const messages=[{role:'user',content:'Code?'},{role:'assistant',content:'Answer starts  '}];
+  const response=await app.send({...input,messages,continuation:true});
+  assert.equal(response.status,200);await response.text();
+  const template=app.calls.find(c=>c.path==='/apply-template').body;
+  const generation=app.calls.find(c=>c.path==='/v1/chat/completions').body;
+  for(const body of [template,generation]){
+    assert.deepEqual(body.messages,messages);
+    assert.equal(body.continue_final_message,'content');assert.equal(body.add_generation_prompt,false);
+    assert.equal(body.chat_template_kwargs.enable_thinking,false);
+  }
+  assert.equal(generation.max_tokens,96);assert.equal(generation.reasoning_budget_tokens,undefined);
 });

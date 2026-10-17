@@ -12,7 +12,7 @@ function CopyReply({text}:{text:string}){
 }
 export function App(){
   const [config,setConfig]=useState<SiteConfig|null>(null),[configError,setConfigError]=useState('');
-  const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[length,setLength]=useState(512),[reasoned,setReasoned]=useState(false);
+  const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[reasoned,setReasoned]=useState(false);
   const [accountOpen,setAccountOpen]=useState(false),[signingOut,setSigningOut]=useState(false);
   const account=useAccount(config?.auth);
   useEffect(()=>{if(account.recovery)setAccountOpen(true)},[account.recovery]);
@@ -37,9 +37,9 @@ export function App(){
     const flush=()=>{frame=0;if(current===generation.current)startTransition(()=>setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText}:x)))};
     try{
       const accessToken=config.requireAuth?await account.accessToken():null;
-      const result=await reply(config,outgoing,length,reasoned,ctrl.signal,text=>{if(current!==generation.current)return;finalText=text;if(!frame)frame=requestAnimationFrame(flush)},text=>{if(current===generation.current){setStatus(text)}},accessToken);
-      if(current===generation.current){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true,limited:result.limited}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}
-    }catch(e){if(current===generation.current&&!ctrl.signal.aborted){setError((e as Error).message);setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}
+      await reply(config,outgoing,reasoned,ctrl.signal,text=>{if(current!==generation.current)return;finalText=text;if(!frame)frame=requestAnimationFrame(flush)},text=>{if(current===generation.current){setStatus(text)}},accessToken);
+      if(current===generation.current){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}
+    }catch(e){if(current===generation.current&&!ctrl.signal.aborted){setError((e as Error).message);if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}}
     finally{cancelAnimationFrame(frame);if(current===generation.current){if(ctrl.signal.aborted){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}setBusy(false);setStatus('');controller.current=null;input.current?.focus()}}
   }
   function stop(){controller.current?.abort();setStatus('Stopping…')}
@@ -49,7 +49,7 @@ export function App(){
     <a className="skip-link" href="#composer">Skip to message</a>
     <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session?<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>:<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
     <main>
-      {!active?<section className="hero" aria-labelledby="brand"><div className="hero-art" data-trig role="img" aria-label="Anonymous figure wearing a hat and sunglasses, working at a laptop"/><div className="hero-copy" data-trig><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:<div className="thinking" aria-hidden="true"><span/><span/><span/></div>}</div>{m.role==='assistant'&&m.limited&&<p className="reply-limit" role="status">Reached the reply length limit. Ask “continue” for more.</p>}{m.role==='assistant'&&m.content&&!busy&&<CopyReply text={m.content}/>}</article>)}</div></div>}
+      {!active?<section className="hero" aria-labelledby="brand"><div className="hero-art" data-trig role="img" aria-label="Anonymous figure wearing a hat and sunglasses, working at a laptop"/><div className="hero-copy" data-trig><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:<div className="thinking" aria-hidden="true"><span/><span/><span/></div>}</div>{m.role==='assistant'&&m.content&&!busy&&<CopyReply text={m.content}/>}</article>)}</div></div>}
       <div className="composer-zone" data-trig={!active?true:undefined}>
         {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span><button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
         <form className="composer" onSubmit={send}>
@@ -59,10 +59,6 @@ export function App(){
             <div className="send-options">
               <label className={`select-control mode-control${reasoned?" is-deep":""}`}>
                 <select aria-label="Answer mode" value={reasoned?'reasoned':'direct'} onChange={e=>setReasoned(e.target.value==='reasoned')} disabled={Boolean(config?.space&&!config.apiBase)}><option value="direct">Fast</option><option value="reasoned">Deep Think</option></select>
-                <ChevronDown size={13} aria-hidden="true"/>
-              </label>
-              <label className={`select-control length-control${length===256?" is-brief":length===1024?" is-detailed":""}`}>
-                <select aria-label="Reply length" value={length} onChange={e=>setLength(Number(e.target.value))}><option value={256}>Brief</option><option value={512}>Balanced</option><option value={1024}>Detailed</option></select>
                 <ChevronDown size={13} aria-hidden="true"/>
               </label>
             </div>

@@ -36,7 +36,7 @@ You can request access to, correction of or deletion of your account information
 
 The providers named above receive data needed to provide the service. OAuth sign-in also involves the chosen identity provider. We do not sell conversation content or provide a conversation-training dataset. Disclosures may also be required by law or needed to protect users and the service, subject to applicable obligations.
 
-The operator is in Armenia. Provider processing can occur in other countries. Actual project regions, provider retention and applicable transfer safeguards must be confirmed before publication; this draft does not assert an unverified hosting region or transfer mechanism.
+The operator is in Armenia. The Samsung model server is physically in Latvia, as confirmed by the operator on October 17, 2026. The configured Supabase database region was observed as Paris, France (eu-west-3). The Vercel API and gateway functions were observed in IAD1, United States. Website delivery and other provider operations can involve additional countries. These observations do not mean all processing stays in the European Union. Provider retention and applicable transfer safeguards must still be confirmed before publication. No external GPU provider is connected today; a future provider change requires an updated disclosure before use.
 
 We use HTTPS, server-side session verification, restricted backend credentials and input validation. The proposed account schema adds row-level security and server-controlled writes. No security measure guarantees that an incident cannot happen, and this notice does not represent a completed security audit.
 
@@ -48,4 +48,4 @@ We will publish a new version for material changes to this notice and provide th
 
 ---
 
-Publication blockers: approve the age/guardian eligibility policy, confirm provider regions/retention and applicable transfer disclosures, verify the deletion/contact process and cleanup schedule, and make all statements match activated features. This draft does not resolve children's privacy obligations. See [publication notes](PUBLICATION.md).
+Publication blockers: approve the age/guardian eligibility policy, confirm provider retention and applicable transfer disclosures, verify the deletion/contact process and cleanup schedule, and make all statements match activated features. This draft does not resolve children's privacy obligations. See [publication notes](PUBLICATION.md).
