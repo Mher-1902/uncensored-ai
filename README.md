@@ -1,7 +1,8 @@
 # Offscript — project handoff
 
-**Active implementation (October 17, 2026):** follow the [server-powered pilot](docs/PILOT.md) and [account control foundation](docs/ACCOUNT-CONTROL.md). Fast and Deep Think are the first modes. Visitors do not download models. The workspace uses a small Aralez mark, charcoal background and readable Matrix-green streamed replies. New account admission and legal publication remain gated; these source changes do not certify 50,000-user capacity or replace the running inference engine.
+**Active implementation (October 17, 2026):** follow the [server-powered pilot](docs/PILOT.md) and [account control foundation](docs/ACCOUNT-CONTROL.md). Fast and Deep Think are the first modes. Visitors do not download models. The workspace preserves the original anonymous figure, charcoal/lime layout and welcome motion. Model replies use bright terminal green (`#00ff41`) and classic Courier monospace. New account admission and legal publication remain gated; these source changes do not certify 50,000-user capacity or replace the running inference engine.
 
+Track active requirements and incoming additions in [the product worklist](docs/PRODUCT-WORKLIST.md).
 **Current model profile (October 16, 2026):** [HauhauCS Qwen3.5 2B Aggressive, Q4_K_M](docs/MODEL-PROFILE.md). The frontend uses `https://offscript-ai.vercel.app/`, Supabase GitHub sign-in, and the protected Samsung Docker backend. The October 4 handoff below is historical; use the current profile and delivery documents for new work.
 
 For ongoing changes, use the [reviewed delivery workflow](docs/DELIVERY.md), [security requirements](SECURITY.md) and [infrastructure roadmap](docs/ROADMAP.md). The handoff below records the earlier machine state; current deployments require fresh validation.

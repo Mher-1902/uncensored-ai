@@ -117,6 +117,6 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
       <button className="dialog-done" disabled={pending}>{pending ? 'Please wait…' : {signin: 'Sign in', signup: 'Create account', reset: 'Send reset link', password: 'Update password'}[mode]}</button>
       {mode !== 'password' && <div className="account-links">{mode !== 'signin' && <button type="button" onClick={() => choose('signin')} disabled={pending}>Sign in</button>}{mode !== 'signup' && <button type="button" onClick={() => choose('signup')} disabled={pending}>Create account</button>}{mode === 'signin' && <button type="button" onClick={() => choose('reset')} disabled={pending}>Forgot password?</button>}</div>}
     </form>}</>}
-    <p className="muted">Supabase manages your account. Only the sign-in session is kept for this tab; chat messages stay in this page’s memory and clear when you reload or leave.</p>
+    <p className="muted">Your account is saved. Chats clear when you leave or reload.</p>
   </dialog>;
 }
