@@ -48,3 +48,8 @@ Account-control integration remains feature-gated. Automatic continuation curren
 ## Staged account interface
 
 The account/acknowledgement interface is prepared behind PILOT_ACCOUNT_CONTROL. It fetches only the same-origin authenticated account API, keeps the agreement unchecked and requires explicit published document links. The policy registry remains empty while drafts are unfinished, so no draft is silently treated as a binding agreement. Server eligibility/admission remains separate. Samsung checks: both builds/SEO, 69 Node and 4 Python tests, peak 59°C. This interface is not activated; real database provisioning, age/guardian safeguards, immutable policy publication, continuation-aware accounting, operator reconciliation and retention still remain.
+
+
+## Database compatibility validation
+
+The real Supabase project was inspected with metadata-only SELECTs: PostgreSQL 17.11, project admin is not a superuser, and Offscript tables/roles are absent. A matching isolated fixture reproduced the bootstrap ownership failure. The correction adds transaction-local role-creator membership and removes temporary schema CREATE after ownership transfer. Keep database enforcement off while the reviewed migration, private runtime credential, logical-answer quota accounting, policies/eligibility, recovery and retention remain unactivated.

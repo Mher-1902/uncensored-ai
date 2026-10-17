@@ -6,27 +6,35 @@ Never accepts a remote database URL or production credentials.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 from pathlib import Path
 import subprocess
 import time
 import uuid
 
 parser=argparse.ArgumentParser()
-parser.add_argument('--container',required=True)
+fixture=parser.add_mutually_exclusive_group(required=True)
+fixture.add_argument('--container')
+fixture.add_argument('--local-fixture',action='store_true')
+parser.add_argument('--provider-role',action='store_true',help='Migrate as a non-superuser project administrator')
 args=parser.parse_args()
 container=args.container
-label=subprocess.check_output(['docker','inspect','--format','{{index .Config.Labels "offscript.testing"}}',container],text=True).strip()
-assert label=='1','Refusing a container without the disposable test label'
-for attempt in range(120):
-    main=subprocess.run(['docker','exec',container,'cat','/proc/1/comm'],capture_output=True,text=True,timeout=5)
-    if main.stdout.strip()=='postgres':break
-    time.sleep(.5)
-else:raise RuntimeError('Final PostgreSQL process did not start')
+if args.local_fixture:
+    assert os.environ.get('OFFSCRIPT_TEST_FIXTURE')=='disposable-postgres','Refusing an unmarked local fixture'
+else:
+    label=subprocess.check_output(['docker','inspect','--format','{{index .Config.Labels "offscript.testing"}}',container],text=True).strip()
+    assert label=='1','Refusing a container without the disposable test label'
+    for attempt in range(120):
+        main=subprocess.run(['docker','exec',container,'cat','/proc/1/comm'],capture_output=True,text=True,timeout=5)
+        if main.stdout.strip()=='postgres':break
+        time.sleep(.5)
+    else:raise RuntimeError('Final PostgreSQL process did not start')
 checks=[]
 A='11111111-1111-4111-8111-111111111111'
 B='22222222-2222-4222-8222-222222222222'
 
-def query(sql,role=None,subject=None,error=None):
+def query(sql,role=None,subject=None,error=None,login='postgres'):
+    assert login in ('postgres','project_migrator')
     prefix=''
     if role:
         assert role in ('authenticated','anon','offscript_gateway','offscript_runtime')
@@ -34,7 +42,8 @@ def query(sql,role=None,subject=None,error=None):
     if subject:
         assert str(uuid.UUID(subject))==subject
         prefix+=f"SET request.jwt.claim.sub='{subject}';\n"
-    result=subprocess.run(['docker','exec','-i',container,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','offscript_test'],input=prefix+sql,text=True,capture_output=True,timeout=20)
+    command=['node',str(Path(__file__).with_name('test-database-client.mjs')),login] if args.local_fixture else ['docker','exec','-i',container,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U',login,'-d','offscript_test']
+    result=subprocess.run(command,input=prefix+sql,text=True,capture_output=True,timeout=20)
     if error:
         assert result.returncode!=0 and error in result.stderr, (error,result.stdout,result.stderr)
         return result.stderr
@@ -66,8 +75,16 @@ GRANT USAGE ON SCHEMA auth TO authenticated;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
 ''')
 root=Path(__file__).resolve().parent.parent
-query((root/'supabase/migrations/202610170001_pilot_accounts.sql').read_text())
+if args.provider_role:
+    query('''CREATE ROLE project_migrator LOGIN PASSWORD 'disposable-test-only' NOSUPERUSER CREATEROLE CREATEDB BYPASSRLS;
+    ALTER DATABASE offscript_test OWNER TO project_migrator;
+    GRANT USAGE ON SCHEMA auth TO project_migrator;
+    GRANT REFERENCES ON auth.users TO project_migrator;
+    ''')
+    check('provider fixture has the observed project privileges',query("SELECT NOT rolsuper AND rolcreaterole AND rolcreatedb AND rolbypassrls FROM pg_roles WHERE rolname=current_user;",login='project_migrator')=='t')
+query((root/'supabase/migrations/202610170001_pilot_accounts.sql').read_text(),login='project_migrator' if args.provider_role else 'postgres')
 check('migration applies')
+check('bootstrap CREATE permission is removed from the data owner',query("SELECT has_schema_privilege('offscript_data_owner','public','CREATE');")=='f')
 query(f"INSERT INTO auth.users VALUES('{A}'),('{B}');")
 check('account defaults do not grant serving eligibility',account(A)['status']=='pending' and account(A)['eligibility']=='pending')
 account(B)

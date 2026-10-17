@@ -1,6 +1,9 @@
 -- Account metadata only. Never add conversation content to this schema.
 -- Apply as the migration administrator, not as the application login.
 BEGIN;
+-- Managed project administrators have CREATEROLE, not SUPERUSER. Give only
+-- the creating migration administrator access to its new NOLOGIN roles.
+SET LOCAL createrole_self_grant='set,inherit';
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='offscript_data_owner') THEN
@@ -19,6 +22,9 @@ CREATE SCHEMA offscript_api AUTHORIZATION offscript_data_owner;
 REVOKE ALL ON SCHEMA offscript_private,offscript_api FROM PUBLIC,anon,authenticated;
 GRANT USAGE ON SCHEMA offscript_api TO offscript_gateway;
 GRANT USAGE ON SCHEMA public TO offscript_data_owner,authenticated;
+-- PostgreSQL requires the new table owner to have CREATE in the schema at
+-- ownership transfer. Remove this bootstrap permission before committing.
+GRANT CREATE ON SCHEMA public TO offscript_data_owner;
 
 CREATE TABLE public.offscript_accounts (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -200,4 +206,5 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA offscript_api TO offscript_gateway;
 ALTER DEFAULT PRIVILEGES FOR ROLE offscript_data_owner IN SCHEMA offscript_api REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 COMMENT ON SCHEMA offscript_api IS 'Private SQL API: verified gateway role only; do not expose through PostgREST.';
 COMMENT ON TABLE offscript_private.inference_leases IS 'No prompts/replies; expiry alone never releases uncertain model capacity.';
+REVOKE CREATE ON SCHEMA public FROM offscript_data_owner;
 COMMIT;
