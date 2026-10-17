@@ -9,5 +9,6 @@ export function publicConfig(metadata, env = process.env) {
       auth = {url: url.origin, publishableKey: env.SUPABASE_PUBLISHABLE_KEY, providers, emailEnabled: env.SUPABASE_EMAIL_ENABLED === 'true'};
     }
   } catch {}
-  return {model: metadata.model, modelUrl: metadata.modelUrl, space: null, apiBase: '/api', requireAuth: true, auth};
+  return {model: metadata.model, modelUrl: metadata.modelUrl, space: null, apiBase: '/api', requireAuth: true, auth,
+    ...(env.PILOT_ACCOUNT_CONTROL === 'true' ? {accountControl: true} : {})};
 }

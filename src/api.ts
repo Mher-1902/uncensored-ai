@@ -1,11 +1,12 @@
 export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean };
 import {readEvents} from './stream.ts';
 export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
-export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null };
+export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null; accountControl?:boolean };
 export async function loadConfig():Promise<SiteConfig>{
   const response=await fetch('/config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Could not load the site configuration.');
   const config=await response.json();
+  if(config.accountControl!==undefined&&typeof config.accountControl!=='boolean')throw Error('Invalid account configuration.');
   if(config.space&&!/^[\w.-]+\/[\w.-]+$/.test(config.space))throw Error('Invalid model configuration.');
   if(config.apiBase){
     const url=new URL(config.apiBase,location.origin);

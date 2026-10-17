@@ -4,6 +4,8 @@ const Reply=lazy(()=>import('./Reply'));
 import {loadConfig,reply,type Message,type SiteConfig} from './api';
 import {AccountDialog,useAccount} from './account';
 import {useOffscriptMotion} from './useOffscriptMotion';
+import {PilotDialog,usePilotControls} from './pilot-controls';
+import {canUsePilot} from './pilot-api';
 
 function CopyReply({text}:{text:string}){
   const [label,setLabel]=useState('Copy reply');
@@ -13,8 +15,10 @@ function CopyReply({text}:{text:string}){
 export function App(){
   const [config,setConfig]=useState<SiteConfig|null>(null),[configError,setConfigError]=useState('');
   const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[reasoned,setReasoned]=useState(false);
-  const [accountOpen,setAccountOpen]=useState(false),[signingOut,setSigningOut]=useState(false);
+  const [pilotOpen,setPilotOpen]=useState(false),[accountOpen,setAccountOpen]=useState(false),[signingOut,setSigningOut]=useState(false);
   const account=useAccount(config?.auth);
+  const pilot=usePilotControls(config,account.session?.user.id,account.accessToken);
+  useEffect(()=>{if(!account.session)setPilotOpen(false)},[account.session?.user.id]);
   useEffect(()=>{if(account.recovery)setAccountOpen(true)},[account.recovery]);
   const input=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null),scroller=useRef<HTMLDivElement>(null),follow=useRef(true),generation=useRef(0);
   useOffscriptMotion(messages.length===0);
@@ -30,6 +34,7 @@ export function App(){
     e?.preventDefault();const question=draft.trim();if(!question||busy)return;
     if(!config||(!config.space&&!config.apiBase)){setError('The website is live. Its model server is not connected yet. No message was sent.');return}
     if(config.requireAuth&&!account.session){setAccountOpen(true);return}
+    if(config.accountControl&&(pilot.loading||pilot.error||!canUsePilot(pilot.data,reasoned))){setPilotOpen(true);return}
     const current=++generation.current,ctrl=new AbortController();controller.current=ctrl;setBusy(true);setError('');setDraft('');setStatus('Preparing a reply…');follow.current=true;
     const outgoing=[...messages.filter(m=>m.complete),{id:crypto.randomUUID(),role:'user' as const,content:question,complete:true}];
     const answer:Message={id:crypto.randomUUID(),role:'assistant',content:'',complete:false};
@@ -40,14 +45,14 @@ export function App(){
       await reply(config,outgoing,reasoned,ctrl.signal,text=>{if(current!==generation.current)return;finalText=text;if(!frame)frame=requestAnimationFrame(flush)},text=>{if(current===generation.current){setStatus(text)}},accessToken);
       if(current===generation.current){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}
     }catch(e){if(current===generation.current&&!ctrl.signal.aborted){setError((e as Error).message);if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}}
-    finally{cancelAnimationFrame(frame);if(current===generation.current){if(ctrl.signal.aborted){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}setBusy(false);setStatus('');controller.current=null;input.current?.focus()}}
+    finally{cancelAnimationFrame(frame);if(current===generation.current){if(ctrl.signal.aborted){if(finalText)setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText,complete:true}:x));else{setMessages(m=>m.filter(x=>x.id!==answer.id&&x.id!==outgoing.at(-1)?.id));setDraft(question)}}setBusy(false);setStatus('');controller.current=null;input.current?.focus();if(config.accountControl)void pilot.refresh()}}
   }
   function stop(){controller.current?.abort();setStatus('Stopping…')}
   async function signOut(){if(!account.client||signingOut)return;clear();setSigningOut(true);try{const {error:failure}=await account.client.auth.signOut({scope:'local'});if(failure)throw failure}catch{setError('Sign-out could not complete. Please try again.')}finally{setSigningOut(false)}}
   const active=messages.length>0;
   return <div className={`shell ${active?'in-chat':''}`}>
     <a className="skip-link" href="#composer">Skip to message</a>
-    <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session?<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>:<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
+    <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session?(config.accountControl?<button className="account-button" onClick={()=>setPilotOpen(true)}>Account</button>:<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>):<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
     <main>
       {!active?<section className="hero" aria-labelledby="brand"><div className="hero-art" data-trig role="img" aria-label="Anonymous figure wearing a hat and sunglasses, working at a laptop"/><div className="hero-copy" data-trig><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:<div className="thinking" aria-hidden="true"><span/><span/><span/></div>}</div>{m.role==='assistant'&&m.content&&!busy&&<CopyReply text={m.content}/>}</article>)}</div></div>}
       <div className="composer-zone" data-trig={!active?true:undefined}>
@@ -69,6 +74,7 @@ export function App(){
       </div>
     </main>
     <div className="sr-only" aria-live="polite">{busy?status:error||'Ready for a question.'}</div>
+    {config?.accountControl&&account.session&&<PilotDialog controls={pilot} open={pilotOpen} onClose={()=>setPilotOpen(false)} onSignOut={()=>void signOut()} signingOut={signingOut}/>}
     <AccountDialog account={account} open={accountOpen} onClose={()=>setAccountOpen(false)}/>
   </div>;
 }

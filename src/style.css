@@ -44,3 +44,5 @@
 /* A true black terminal canvas for replies; the illustrated welcome stays intact. */
 .in-chat{background:#0a0a0a}
 .assistant .markdown pre{background:#000}
+
+.pilot-dialog .policy-choice{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.6;margin:22px 0}.policy-choice input{flex:none;margin:5px 0 0;accent-color:var(--accent);width:17px;height:17px}.pilot-dialog a{color:var(--accent)}.pilot-dialog .account-error{color:#ffd2ba}
