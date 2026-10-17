@@ -1,6 +1,6 @@
 # Automatic answers and account admission
 
-Implementation specification. Not an activated feature. The current worker-request ledger is safe for individual requests, but enabling it unchanged would count automatic continuations as separate daily requests. Keep PILOT_ACCOUNT_CONTROL disabled until the logical-answer lifecycle below is implemented and tested.
+Implementation contract. Not an activated feature. Migration `202610170002_logical_answers.sql` implements the database lifecycle below; runtime/browser integration and its failure tests must follow before activation. The current deployed worker-request bridge would count automatic continuations as separate daily requests. Keep PILOT_ACCOUNT_CONTROL disabled until the complete logical-answer path is implemented and tested.
 
 ## Required behavior
 
@@ -37,3 +37,9 @@ Prune finished worker/answer metadata after 24 hours and daily aggregates after 
 Use real disposable PostgreSQL with two accounts and competing connections, plus the offline native/runtime fixture. Test one allowance across several segments, hidden-token accounting, no double charge for prefill, token-budget clamp, current policies/eligibility, stolen-owner and replayed receipts, two racing continuations, Stop between/during segments, disconnect before/after settlement, stale worker IDs, unknown usage, database failures, safe waiting expiry, unresolved active retention and account deletion. Confirm no conversation columns or logs are introduced. Run authenticated browser QA with dummy/local fixtures before production enforcement.
 
 This specification adds no 50,000-user capacity claim. The current Samsung still has one CPU inference slot; admission controls keep overload bounded rather than creating more compute.
+
+## Database implementation
+
+The second migration adds private forced-RLS answer and segment metadata. Admission and settlement share the foundation's settings lock. It issues owner-bound single-use continuation receipts only after known worker cleanup and validated token usage, holds capacity across the 30-second handoff, and disables the gateway's legacy per-worker admission functions. Initial Deep accounting includes the engine's additional thinking-token budget. A deletion trigger blocks Auth/account cascades while computation is active, waiting or uncertain; the deletion workflow must cancel and settle first.
+
+This migration is staged, not applied to the managed project. The already-applied foundation is recorded in [DATABASE-RELEASES.md](DATABASE-RELEASES.md). Runtime credential creation, deployment, policy/eligibility activation, operator reconciliation and retention scheduling remain separate release gates.
