@@ -57,11 +57,11 @@ export function App(){
           <textarea id="composer" ref={input} placeholder="What's on your mind?" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
           <div className="composer-bottom">
             <div className="send-options">
-              <label className="select-control mode-control">
+              <label className={`select-control mode-control${reasoned?" is-deep":""}`}>
                 <select aria-label="Answer mode" value={reasoned?'reasoned':'direct'} onChange={e=>setReasoned(e.target.value==='reasoned')} disabled={Boolean(config?.space&&!config.apiBase)}><option value="direct">Fast</option><option value="reasoned">Deep Think</option></select>
                 <ChevronDown size={13} aria-hidden="true"/>
               </label>
-              <label className="select-control length-control">
+              <label className={`select-control length-control${length===256?" is-brief":length===1024?" is-detailed":""}`}>
                 <select aria-label="Reply length" value={length} onChange={e=>setLength(Number(e.target.value))}><option value={256}>Brief</option><option value={512}>Balanced</option><option value={1024}>Detailed</option></select>
                 <ChevronDown size={13} aria-hidden="true"/>
               </label>

@@ -33,8 +33,11 @@
 .send-options{gap:4px;margin-left:0;min-width:0}
 .select-control{position:relative;display:block;flex:none}
 .send-options .select-control select{appearance:none;-webkit-appearance:none;display:block;height:40px;max-width:none;margin:0;padding:0 25px 0 9px;border:0;border-radius:6px;background:transparent;font-size:12px;line-height:normal;color:#b8c1ba}
-.mode-control select{width:104px}
+.mode-control select{width:68px}
+.mode-control.is-deep select{width:102px}
 .length-control select{width:88px}
+.length-control.is-brief select{width:68px}
+.length-control.is-detailed select{width:84px}
 .select-control svg{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#aab6ad}
 .select-control select:not(:disabled):hover{background:#ffffff08}
 .select-control select:disabled+svg{opacity:.35}
