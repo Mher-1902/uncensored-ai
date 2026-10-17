@@ -16,7 +16,7 @@
 .reply-limit{margin:14px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
 
 /* Classic terminal treatment is limited to model output. */
-:root{--terminal-green:#00ff41;--terminal-font:'Courier New',Courier,monospace}
+:root{--terminal-green:#00ff00;--terminal-font:'Courier New',Courier,monospace}
 .assistant{animation:none}
 .assistant .markdown{font-family:var(--terminal-font);font-size:16px;color:var(--terminal-green);font-variant-ligatures:none}
 .assistant .markdown a,.assistant .markdown blockquote{color:inherit}
@@ -25,3 +25,23 @@
 .assistant .markdown :not(pre)>code{font-size:.9em}
 .assistant .markdown blockquote{border-left-color:var(--terminal-green)}
 @media(max-width:700px){.assistant .markdown{font-size:16px}}
+
+/* Compact composer controls, with deliberate spacing instead of native select gaps. */
+.hero-copy{padding-top:14px}
+.composer textarea{min-height:64px;padding:20px 20px 0}
+.composer-bottom{justify-content:space-between;gap:12px;padding:8px 12px 12px 16px;flex-wrap:nowrap}
+.send-options{gap:4px;margin-left:0;min-width:0}
+.select-control{position:relative;display:block;flex:none}
+.send-options .select-control select{appearance:none;-webkit-appearance:none;display:block;height:40px;max-width:none;margin:0;padding:0 25px 0 9px;border:0;border-radius:6px;background:transparent;font-size:12px;line-height:normal;color:#b8c1ba}
+.mode-control select{width:104px}
+.length-control select{width:88px}
+.select-control svg{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#aab6ad}
+.select-control select:not(:disabled):hover{background:#ffffff08}
+.select-control select:disabled+svg{opacity:.35}
+.select-control option{background:#1d2120;color:#e9eae5}
+.composer-bottom .send{flex:none;width:40px;height:40px}
+@media(max-width:700px){.composer textarea{min-height:62px;padding:18px 18px 0}.in-chat .composer textarea{min-height:52px}.composer-bottom{padding-left:12px}}
+
+/* A true black terminal canvas for replies; the illustrated welcome stays intact. */
+.in-chat{background:#0a0a0a}
+.assistant .markdown pre{background:#000}

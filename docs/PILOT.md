@@ -16,7 +16,7 @@ Protocol 2 acknowledges `[DONE]` only after request-state cleanup succeeds. Brok
 
 ## Next increments
 
-The owner requested restoration of the original picture, layout, background and welcome motion on October 17. Keep that visual design. Responses render immediately in bright terminal green (`#00ff41`) and classic Courier monospace; Fast is the default, with Deep Think as an explicit choice. Model health is checked on entry and when opening information, instead of polling every visitor every 30 seconds. The client sends explicit mode plus its matching legacy flag while the serving gateway transitions.
+The owner requested restoration of the original picture, layout, background and welcome motion on October 17. Keep that visual design. Responses render immediately in bright terminal green (`#00ff41`) and classic Courier monospace; Fast is the default, with Deep Think as an explicit choice. The owner also requested compact controls and removal of the technical About panel and “A CONVERSATION. NOT A RECORD.” slogan. The frontend no longer requests model health just to populate a removed panel. The client sends explicit mode plus its matching legacy flag while the serving gateway transitions.
 
 1. Minimal account/acceptance/usage records with default-deny RLS, restricted field writes and atomic admission. Keep chat content in page/request memory, outside durable queues, database, metrics and logs.
 2. The original picture-led workspace, terminal-green monospace model output, Fast default, explicit Deep Think, accessible immediate streaming, Stop/Copy/Clear and no history sidebar. Keep the working name `offscript_`.
