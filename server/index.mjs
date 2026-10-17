@@ -6,21 +6,11 @@ import {once} from 'node:events';
 import {timingSafeEqual} from 'node:crypto';
 import {readEvents} from '../src/stream.ts';
 import {createLlamaEngine} from './llama-engine.mjs';
+import {RequestError,validateRequest} from './request.mjs';
+export {validateRequest} from './request.mjs';
 
 const root=resolve(fileURLToPath(new URL('../dist/',import.meta.url)));
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.xml':'application/xml','.txt':'text/plain'};
-class RequestError extends Error{constructor(status,message){super(message);this.status=status}}
-export function validateRequest(value){
-  if(!value||typeof value!=='object'||!Array.isArray(value.messages)||!value.messages.length)throw new RequestError(400,'Send a message first.');
-  const mode=value.mode??(typeof value.reasoned==='boolean'?(value.reasoned?'deep':'fast'):null);
-  if(!['fast','deep'].includes(mode)||![256,512,1024].includes(value.maxTokens)||(value.reasoned!==undefined&&(typeof value.reasoned!=='boolean'||value.reasoned!==(mode==='deep'))))throw new RequestError(400,'Invalid reply settings.');
-  const messages=value.messages.map((m,i)=>{
-    if(!m||m.role!==(i%2?'assistant':'user')||typeof m.content!=='string'||!m.content.trim())throw new RequestError(400,'Invalid conversation. Clear the chat and try again.');
-    return {role:m.role,content:m.content.trim()};
-  });
-  if(messages.length%2===0)throw new RequestError(400,'The last message must be a question.');
-  return {messages,maxTokens:value.maxTokens,mode};
-}
 async function bodyJSON(req){
   const mediaType=String(req.headers['content-type']||'').split(';',1)[0].trim().toLowerCase();
   if(mediaType!=='application/json')throw new RequestError(415,'Send JSON.');
@@ -55,7 +45,7 @@ export function createGateway(options={}){
   function release(){const next=waiting.shift();if(next)next.grant();else active=false}
   async function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end(JSON.stringify(data))}
   const server=http.createServer(async(req,res)=>{
-    let acquired=false,ctrl;res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
+    let acquired=false,ctrl,workerStopped=true,started=false;res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
     if(origin){
       if(!origins.has(origin))return void await json(res,403,{error:'This website is not allowed to use this server.'});
@@ -72,22 +62,26 @@ export function createGateway(options={}){
       if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
         const ready=healthy&&await engine.ready();
-        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:2,modes:['fast','deep']});
+        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:3,modes:['fast','deep']});
       }
       if(path==='/api/chat'&&req.method==='POST'){
+        res.setHeader('X-Offscript-Protocol','3');
         if(req.headers['x-offscript-client']!=='web')throw new RequestError(403,'Invalid client.');
         const input=validateRequest(await bodyJSON(req));
         ctrl=new AbortController();const abort=()=>ctrl.abort();res.once('close',abort);
         await acquire(ctrl.signal);acquired=true;
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // Slot cleanup must work before accepting content. Never expose slot endpoints.
+        workerStopped=false;
         if(!await engine.dispose()){healthy=false;throw new RequestError(503,'The model server is not ready. Please try again later.')}
+        workerStopped=true;
         if(options.thermalCheck&&await options.thermalCheck())throw new RequestError(503,'The laptop is cooling down. Try again in a moment.');
         const timeout=setTimeout(()=>ctrl.abort(new Error('The response took too long. Try Direct mode or a shorter reply.')),generationTimeout);
         const thermalTimer=options.thermalCheck?setInterval(async()=>{if(await options.thermalCheck())ctrl.abort(new Error('The laptop is cooling down. Try again in a moment.'))},1000):null;
         let completed=false;
         try{
           const prepared=await engine.prepare(input,ctrl.signal);
+          started=true;workerStopped=false;
           const response=await engine.generate(prepared,ctrl.signal);
           res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no'});
           // Avoid forwarding inference diagnostics or prompt echoes to the public client.
@@ -105,12 +99,13 @@ export function createGateway(options={}){
           clearTimeout(timeout);if(thermalTimer)clearInterval(thermalTimer);ctrl.abort();
           // Do not reuse a slot unless the old request's cache has been erased successfully.
           const cleared=await engine.dispose();
+          workerStopped=cleared;
           if(!cleared)healthy=false;
           res.removeListener('close',abort);
         }
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // DONE means the request's model state has actually been cleared.
-        if(!res.destroyed)res.end('data: [DONE]\n\n');
+        if(!res.destroyed)res.end('data: {"control":{"workerStopped":true,"outcome":"completed"}}\n\ndata: [DONE]\n\n');
         return;
       }
       if(path==='/config.json'&&req.method==='GET'){
@@ -131,7 +126,8 @@ export function createGateway(options={}){
     }catch(error){
       if(res.destroyed)return;
       const message=error.status?error.message:ctrl?.signal.reason instanceof Error&&ctrl.signal.reason.name!=='AbortError'?ctrl.signal.reason.message:'The model connection failed. Please try again.';
-      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message})}\n\n`)}else await json(res,error.status||503,{error:message});
+      const control={workerStopped,outcome:started?'failed':'rejected'};
+      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control})}\n\n`)}else await json(res,error.status||503,{error:message,control});
     }finally{if(acquired)release()}
   });
   server.requestTimeout=15000;server.headersTimeout=10000;server.keepAliveTimeout=5000;

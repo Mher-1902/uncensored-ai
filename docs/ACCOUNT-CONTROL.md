@@ -22,6 +22,18 @@ Expired or uncertain leases do **not** automatically free capacity. The worker m
 
 Terminal request metadata can be pruned after 24 hours and daily totals after 35 days, preserving totals associated with uncertain work. Schedule the prune function only after activation. Account deletion cascades through its metadata; the API must first stop any active work before deleting the Auth identity. No prompts/replies, IPs, birth dates, identity documents or payment details are introduced here.
 
+## Authenticated API integration
+
+`PILOT_ACCOUNT_CONTROL=true` enables the account/acceptance routes and admission around chat. It is off by default; misspelled flag values fail closed. No production flag, migration or credential has been configured by this increment. The public `/api/*` routing and internal service binding remain unchanged.
+
+`GET /api/account` uses the verified Supabase subject. `POST /api/acceptance` accepts only an explicit `accepted: true` and the current terms/privacy version identifiers; extra ownership or plan fields are rejected. Database policy checks remain authoritative. Neither endpoint returns prompts, identity-provider tokens or credentials.
+
+The gateway lazily opens a PostgreSQL pool of at most two connections per instance. It requires a dedicated `offscript_runtime` login, membership in `offscript_gateway`, no owner membership or administrative/BYPASSRLS privileges, a managed Supabase host and verified TLS. SQL calls bind values as parameters. Use the Supabase transaction-pooler connection for serverless deployment, with unnamed queries. `PILOT_DATABASE_URL` is a server secret; its query string cannot override TLS. A required public CA certificate can be supplied through `PILOT_DATABASE_CA`; certificate verification must remain enabled. Do not use the project-owner database login or a Supabase service-role key.
+
+The native worker's protocol 3 confirms cleanup on successful completion and controlled rejection/failure. Chat preflights this protocol, reserves a database lease before forwarding messages, and sends browser `[DONE]` only after cleanup confirmation and successful accounting. Unconfirmed disconnects, failed cleanup and uncertain database writes retain capacity. Unknown token usage charges the reserved context conservatively. Internal worker-control frames are removed before reaching the browser. Recognized account failures receive fixed public wording; database diagnostics are never forwarded.
+
+Cancellation without a cleanup acknowledgement requires operator reconciliation; this increment intentionally does not guess that the worker stopped or expire the lease automatically. A reliable private cancellation/reconciliation flow is still an activation prerequisite for a usable pilot, alongside the acceptance UI and linked final legal pages. Do not enable enforcement on the existing protocol-1/2 worker or claim the API is already live.
+
 ## Validation and activation
 
 `python3 scripts/test_database.py --container <id>` refuses an unlabelled container and uses only the disposable `offscript_test` database. CI has an isolated PostgreSQL service with dummy accounts and a pinned image. Tests exercise real policies, blocked field changes, current policy requirements, concurrent admission, stale/uncertain leases, quotas, settlement, pruning and deletion.

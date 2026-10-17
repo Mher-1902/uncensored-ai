@@ -12,7 +12,7 @@ The native gateway now accepts `mode: "fast" | "deep"`. The legacy `reasoned` bo
 
 The llama adapter owns readiness, real template/token accounting, generation and state disposal. Context remains 4,096 tokens. Output budgets, thinking reserve, sampling, CPU/memory/swap limits and thermal protection remain unchanged. Model administration stays private. A future vLLM adapter must implement its own token/template/cancellation contract; substituting a base URL is insufficient.
 
-Protocol 2 acknowledges `[DONE]` only after request-state cleanup succeeds. Broken streams and failed cleanup remain errors; an uncleared worker stops accepting inference. This permits later account admission to distinguish successful completion from an uncertain worker state. No database admission or new model engine is deployed by this increment.
+Protocol 3 acknowledges cleanup on successful completion and controlled failure; `[DONE]` follows cleanup. Broken streams and failed cleanup remain errors; an uncleared worker stops accepting inference. The account API can reserve capacity before generation and settle the database before acknowledging completion, while treating disconnects as uncertain. These changes are tested source increments; no database admission or new model engine is deployed yet.
 
 ## Next increments
 

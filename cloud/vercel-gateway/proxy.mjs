@@ -1,3 +1,4 @@
+import {AccountError} from './account-store.mjs';
 const MAX_BODY = 65536;
 export function json(status, value) {
   return Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'X-Content-Type-Options': 'nosniff'}});
@@ -5,7 +6,7 @@ export function json(status, value) {
 
 export function routeRequest(request, path, sameOrigin = true) {
   if (new URL(request.url).pathname !== path) return json(404, {error: 'API route not found.'});
-  const method = path === '/api/health' ? 'GET' : 'POST';
+  const method = ['/api/health', '/api/account'].includes(path) ? 'GET' : 'POST';
   if (request.method !== method) return json(405, {error: 'Method not allowed.'});
   if (sameOrigin && request.headers.get('origin') && request.headers.get('origin') !== new URL(request.url).origin) return json(403, {error: 'This website is not allowed to use this server.'});
   if (method === 'POST') {
@@ -30,12 +31,16 @@ async function bodyBytes(request, signal) {
       if (size > MAX_BODY) throw Object.assign(Error('This message is too large. Please shorten it.'), {status: 413});
       parts.push(value);
     }
-  } finally { signal.removeEventListener('abort', cancelled); await reader.cancel().catch(() => {}); }
+  } finally { signal.removeEventListener('abort', cancelled); await reader.cancel().catch(() => {}); reader.releaseLock(); }
   if (signal.aborted) throw Error('Request cancelled.');
   const bytes = Buffer.concat(parts);
   try { JSON.parse(bytes.toString('utf8')); }
   catch { throw Object.assign(Error('Invalid message data.'), {status: 400}); }
   return bytes;
+}
+
+export async function bodyJSON(request, signal = request.signal) {
+  return JSON.parse((await bodyBytes(request, signal)).toString('utf8'));
 }
 
 export async function forward(request, base, route, {headers = {}, fetchImpl = fetch, timeoutMs = 270000} = {}) {
@@ -52,12 +57,20 @@ export async function forward(request, base, route, {headers = {}, fetchImpl = f
       headers: {...headers, ...(body ? {'Content-Type': 'application/json'} : {})},
     });
     if (!upstream.ok) {
+      // Only recognized account codes receive specific public wording.
+      if(upstream.headers.get('content-type')?.split(';',1)[0]==='application/json') {
+        try {
+          const value=await bodyJSON(upstream,controller.signal);
+          const safe=new AccountError(value?.code);
+          if(value?.code===safe.code && upstream.status===safe.status) {cleanup();return json(safe.status,{error:safe.message,code:safe.code});}
+        } catch { /* Untrusted upstream diagnostics remain redacted. */ }
+      }
       await upstream.body?.cancel(); cleanup();
-      const status = [400, 401, 403, 413, 415, 422, 429, 503].includes(upstream.status) ? upstream.status : 502;
+      const status = [400, 401, 403, 404, 409, 413, 415, 422, 429, 503].includes(upstream.status) ? upstream.status : 502;
       return json(status, {ready: false, error: status === 401 ? 'Sign in before sending a message.' : 'The model could not complete this request. Please try again.'});
     }
     const type = upstream.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
-    if (!upstream.body || type !== (request.method === 'POST' ? 'text/event-stream' : 'application/json')) {
+    if (!upstream.body || type !== (route.replace(/^\//, '') === 'api/chat' ? 'text/event-stream' : 'application/json')) {
       await upstream.body?.cancel(); cleanup();
       return json(502, {ready: false, error: 'The model sent an invalid response.'});
     }

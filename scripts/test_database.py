@@ -29,7 +29,7 @@ B='22222222-2222-4222-8222-222222222222'
 def query(sql,role=None,subject=None,error=None):
     prefix=''
     if role:
-        assert role in ('authenticated','anon','offscript_gateway')
+        assert role in ('authenticated','anon','offscript_gateway','offscript_runtime')
         prefix+=f'SET ROLE {role};\n'
     if subject:
         assert str(uuid.UUID(subject))==subject
@@ -94,6 +94,11 @@ check('plan, eligibility and ownership cannot be client-written')
 query(f"SELECT offscript_api.account('{B}');",'authenticated',A,error='permission denied')
 query('SELECT * FROM public.offscript_accounts;','offscript_gateway',error='permission denied')
 check('backend is restricted to its SQL API and clients cannot call it')
+query('CREATE ROLE offscript_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION; GRANT offscript_gateway TO offscript_runtime;')
+check('dedicated runtime member can call SQL API',json.loads(query(f"SELECT offscript_api.account('{A}');",'offscript_runtime'))['plan']=='free')
+query('SELECT * FROM public.offscript_accounts;','offscript_runtime',error='permission denied')
+query('SELECT * FROM offscript_private.settings;','offscript_runtime',error='permission denied')
+check('runtime member cannot read tables or inherit owner access',query("SELECT pg_has_role(current_user,'offscript_gateway','MEMBER') AND NOT pg_has_role(current_user,'offscript_data_owner','MEMBER');",'offscript_runtime')=='t')
 check('application roles have no bypass/login/superuser',query("SELECT count(*) FROM pg_roles WHERE rolname IN ('offscript_data_owner','offscript_gateway') AND (rolsuper OR rolbypassrls OR rolcanlogin);")=='0')
 check('all five tables force RLS',query("SELECT count(*) FROM pg_class WHERE relname IN ('offscript_accounts','offscript_policy_acceptances','offscript_usage_daily','settings','inference_leases') AND relrowsecurity AND relforcerowsecurity;")=='5')
 query(f"SELECT offscript_api.reserve_request('{A}','{uuid.uuid4()}','research',256);",'offscript_gateway',error='invalid_request')

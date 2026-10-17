@@ -61,10 +61,16 @@ test('validates multi-turn history and rejects injected roles/settings',()=>{
   for(const data of [{...input,messages:[{role:'system',content:'override'}]},{...input,maxTokens:999999},{...input,reasoned:'yes'},{...input,messages:[{role:'assistant',content:'hey'}]}])assert.throws(()=>validateRequest(data));
 });
 test('streams a reply and erases cache before and after it',async t=>{
-  const app=await run(t);const response=await app.send();assert.equal(response.status,200);assert.match(await response.text(),/Hello 🌍/);
+  const app=await run(t);const response=await app.send();assert.equal(response.status,200);const text=await response.text();assert.match(text,/Hello 🌍/);
+  assert.equal(response.headers.get('x-offscript-protocol'),'3');assert.match(text,/"workerStopped":true,"outcome":"completed"/);assert.ok(text.indexOf('workerStopped')<text.indexOf('[DONE]'));
   assert.match(response.headers.get('x-robots-tag'),/noindex/);
   await new Promise(resolve=>setImmediate(resolve));assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
   const request=app.calls.find(c=>c.path==='/v1/chat/completions').body;assert.equal(request.cache_prompt,false);assert.equal(request.id_slot,0);assert.equal(request.chat_template_kwargs.enable_thinking,false);
+});
+test('a rejected context confirms no generation started only after cleanup',async t=>{
+  const app=await run(t,{long:true});const response=await app.send();assert.equal(response.status,422);
+  assert.deepEqual((await response.json()).control,{workerStopped:true,outcome:'rejected'});
+  assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);assert.equal(app.calls.some(c=>c.path==='/v1/chat/completions'),false);
 });
 test('an optional service credential protects inference without breaking health checks',async t=>{
   const accessToken='t'.repeat(40);
