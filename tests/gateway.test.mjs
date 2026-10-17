@@ -62,7 +62,7 @@ test('validates multi-turn history and rejects injected roles/settings',()=>{
 });
 test('streams a reply and erases cache before and after it',async t=>{
   const app=await run(t);const response=await app.send();assert.equal(response.status,200);const text=await response.text();assert.match(text,/Hello 🌍/);
-  assert.equal(response.headers.get('x-offscript-protocol'),'3');assert.match(text,/"workerStopped":true,"outcome":"completed"/);assert.ok(text.indexOf('workerStopped')<text.indexOf('[DONE]'));
+  assert.equal(response.headers.get('x-offscript-protocol'),'4');assert.match(text,/"workerStopped":true,"outcome":"completed"/);assert.ok(text.indexOf('workerStopped')<text.indexOf('[DONE]'));
   assert.match(response.headers.get('x-robots-tag'),/noindex/);
   await new Promise(resolve=>setImmediate(resolve));assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
   const request=app.calls.find(c=>c.path==='/v1/chat/completions').body;assert.equal(request.cache_prompt,false);assert.equal(request.id_slot,0);assert.equal(request.chat_template_kwargs.enable_thinking,false);
@@ -199,4 +199,47 @@ test('adapter rejects credential-bearing, non-loopback and non-HTTP listeners',(
   for(const inference of ['https://127.0.0.1:8081','http://model.internal:8081','http://u:p@localhost:8081','file:///tmp/model','http://localhost:8081/private']) {
     assert.throws(()=>createGateway({inference}),/loopback HTTP origin/);
   }
+});
+
+test('private cancellation waits for slot cleanup and cannot stop an unknown worker request',async t=>{
+  const accessToken='t'.repeat(40);let releaseCleanup,disposals=0,generations=0;
+  const engine={ready:async()=>true,prepare:async input=>input,
+    generate:async(_input,signal)=>{
+      generations++;
+      return new Response(new ReadableStream({start(output){
+        output.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"First"}}]}\n\n'));
+        signal.addEventListener('abort',()=>output.close(),{once:true});
+      }}));
+    },dispose:async()=>{if(++disposals===2)await new Promise(resolve=>{releaseCleanup=resolve});return true}};
+  const app=await run(t,{engine,accessToken});
+  const workerId=(await (await fetch(`${app.url}/api/health`)).json()).workerId;
+  const requestId='11111111-1111-4111-8111-111111111111';
+  const tracking={'X-Offscript-Request-ID':requestId,'X-Offscript-Worker-ID':workerId,'X-Offscript-Request-Deadline':String(Date.now()+10000)};
+  const send=()=>fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,...tracking,Authorization:`Bearer ${accessToken}`},body:JSON.stringify(input)});
+  const cancel=(data={requestId,workerId},authorized=true)=>fetch(`${app.url}/api/cancel`,{method:'POST',headers:{'Content-Type':'application/json',...(authorized?{Authorization:`Bearer ${accessToken}`}:{})},body:JSON.stringify(data)});
+  const response=await send();const reader=response.body.getReader();await reader.read();
+  assert.equal((await cancel(undefined,false)).status,401);
+  assert.equal((await (await cancel({requestId,workerId:'22222222-2222-4222-8222-222222222222'})).json()).control.workerStopped,false);
+  let acknowledged=false;const stopping=cancel().then(value=>{acknowledged=true;return value});
+  while(!releaseCleanup)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(acknowledged,false);
+  releaseCleanup();const stopped=await (await stopping).json();
+  assert.deepEqual(stopped.control,{requestId,workerId,workerStopped:true,outcome:'cancelled'});
+  assert.equal((await send()).status,409);assert.equal(generations,1);
+  assert.equal((await (await fetch(`${app.url}/api/health`)).json()).busy,false);
+  await reader.cancel();
+  assert.equal((await cancel({...stopped.control,workerStopped:true})).status,400);
+});
+
+test('a disconnected tracked stream retains a cancelled receipt rather than reporting completion',async t=>{
+  const accessToken='t'.repeat(40),app=await run(t,{hold:true,accessToken});
+  const workerId=(await (await fetch(`${app.url}/api/health`)).json()).workerId;
+  const requestId='11111111-1111-4111-8111-111111111111',controller=new AbortController();
+  const pending=fetch(`${app.url}/api/chat`,{method:'POST',signal:controller.signal,
+    headers:{...headers,Authorization:`Bearer ${accessToken}`,'X-Offscript-Request-ID':requestId,'X-Offscript-Worker-ID':workerId,'X-Offscript-Request-Deadline':String(Date.now()+10000)},body:JSON.stringify(input)});
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  controller.abort();await assert.rejects(pending);
+  const response=await fetch(`${app.url}/api/cancel`,{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({requestId,workerId})});
+  assert.equal((await response.json()).control.outcome,'cancelled');
+  assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
 });

@@ -4,7 +4,7 @@ import {forward, json, routeRequest, bodyJSON} from './proxy.mjs';
 import {accountControlEnabled,accountFailure,createAccountStore} from './account-store.mjs';
 import {admittedChat} from './admission.mjs';
 
-export function createBridge({env = process.env, fetchImpl = fetch, verify, accountStore} = {}) {
+export function createBridge({env = process.env, fetchImpl = fetch, verify, accountStore, defer} = {}) {
   let verifier, configuredFor;
   const store=accountStore || createAccountStore({env});
   return async request => {
@@ -40,7 +40,7 @@ export function createBridge({env = process.env, fetchImpl = fetch, verify, acco
           || ![data.termsVersion,data.privacyVersion].every(value=>typeof value==='string' && /^[A-Za-z0-9._-]{1,64}$/.test(value)))return json(400,{error:'Confirm the current policy versions.'});
         return json(200,await store.accept(user,data.termsVersion,data.privacyVersion));
       }
-      if(enabled && path==='/api/chat')return await admittedChat(request,{user,store,origin:env.SAMSUNG_API_ORIGIN,credential:samsungToken,fetchImpl});
+      if(enabled && path==='/api/chat')return await admittedChat(request,{user,store,origin:env.SAMSUNG_API_ORIGIN,credential:samsungToken,fetchImpl,defer});
     } catch(error) {
       if([400,413,415].includes(error.status))return json(error.status,{error:error.message});
       const safe=accountFailure(error);return json(safe.status,{error:safe.message,code:safe.code});

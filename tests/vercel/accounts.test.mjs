@@ -7,6 +7,8 @@ import {createAppHandler} from '../../cloud/vercel-api/handler.mjs';
 
 const user='11111111-1111-4111-8111-111111111111';
 const other='22222222-2222-4222-8222-222222222222';
+const workerId='33333333-3333-4333-8333-333333333333';
+const receipt=(options,outcome='completed')=>({requestId:options.headers['X-Offscript-Request-ID'],workerId,workerStopped:true,outcome});
 const env={PILOT_ACCOUNT_CONTROL:'true',SUPABASE_URL:'https://project.supabase.co',SAMSUNG_API_ORIGIN:'https://worker.test',SAMSUNG_GATEWAY_TOKEN:'t'.repeat(40)};
 const request=(path='/api/chat',data={messages:[{role:'user',content:'Hello'}],maxTokens:256,mode:'fast'})=>new Request('https://app.test'+path,{
   method:path==='/api/account'?'GET':'POST',headers:{Authorization:'Bearer dummy','Content-Type':'application/json','X-Offscript-Client':'web'},...(path==='/api/account'?{}:{body:JSON.stringify(data)}),
@@ -14,19 +16,20 @@ const request=(path='/api/chat',data={messages:[{role:'user',content:'Hello'}],m
 const metadata={plan:'free',status:'active',eligibility:'eligible',policies:{published:true,termsVersion:'terms-v1',privacyVersion:'privacy-v1',accepted:true},usage:{requestsRemaining:9,deepRemaining:2,tokensRemaining:19000}};
 const frame=(event)=>'data: '+JSON.stringify(event)+'\n\n';
 function fixture(extra={}) {
-  const calls=[];
+  const calls=[],lifetimes=[];
   const store={account:async(...args)=>{calls.push(['account',...args]);return metadata},accept:async(...args)=>{calls.push(['accept',...args]);return metadata},
     reserve:async(...args)=>{calls.push(['reserve',...args]);return {}},finish:async(...args)=>{calls.push(['finish',...args]);return {state:args.at(-1)?'finished':'uncertain'}},...extra.store};
   const fetchImpl=async(url,options)=>{
     calls.push(['worker',url.pathname,options]);
-    if(url.pathname==='/api/health')return Response.json({ready:true,protocol:extra.protocol??3});
+    if(url.pathname==='/api/health')return Response.json({ready:true,protocol:extra.protocol??4,workerId});
+    if(url.pathname==='/api/cancel')return extra.cancelResponse?extra.cancelResponse(options):Response.json({control:{workerStopped:false}});
     if(extra.response)return extra.response(options);
-    return new Response(frame({choices:[{delta:{content:'Hello'},finish_reason:'stop'}]})+frame({usage:{prompt_tokens:8,completion_tokens:2}})+frame({control:{workerStopped:true,outcome:'completed'}})+'data: [DONE]\n\n',{
-      headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'3'},
+    return new Response(frame({choices:[{delta:{content:'Hello'},finish_reason:'stop'}]})+frame({usage:{prompt_tokens:8,completion_tokens:2}})+frame({control:receipt(options)})+'data: [DONE]\n\n',{
+      headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'4'},
     });
   };
-  const bridge=createBridge({env:{...env,...extra.env},accountStore:store,verify:async authorization=>{if(authorization!=='Bearer dummy')throw Error();return user},fetchImpl});
-  return {calls,store,bridge};
+  const bridge=createBridge({env:{...env,...extra.env},accountStore:store,verify:async authorization=>{if(authorization!=='Bearer dummy')throw Error();return user},fetchImpl,defer:promise=>lifetimes.push(promise)});
+  return {calls,store,bridge,lifetimes};
 }
 
 test('private database configuration enforces managed hosts, a dedicated login, verified TLS and a bounded pool',()=>{
@@ -84,7 +87,7 @@ test('quota errors survive the public binding with approved wording and no datab
 
 test('old workers cannot admit a lease and unconfirmed completion retains an uncertain lease',async()=>{
   const old=fixture({protocol:2});assert.equal((await old.bridge(request())).status,503);assert.equal(old.calls.some(c=>c[0]==='reserve'),false);
-  const broken=fixture({response:()=>new Response(frame({choices:[{delta:{content:'Partial'}}]})+'data: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'3'}})});
+  const broken=fixture({response:()=>new Response(frame({choices:[{delta:{content:'Partial'}}]})+'data: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'4'}})});
   await assert.rejects((await broken.bridge(request())).text(),/finalized/);
   assert.equal(broken.calls.find(c=>c[0]==='finish').at(-1),false);
 });
@@ -95,10 +98,52 @@ test('failed database settlement withholds DONE even after the worker confirms c
 });
 
 test('a confirmed pre-start worker rejection refunds admission, while a disconnect does not',async()=>{
-  const rejected=fixture({response:()=>Response.json({error:'internal detail',control:{workerStopped:true,outcome:'rejected'}},{status:422,headers:{'X-Offscript-Protocol':'3'}})});
+  const rejected=fixture({response:options=>Response.json({error:'internal detail',control:receipt(options,'rejected')},{status:422,headers:{'X-Offscript-Protocol':'4'}})});
   const result=await rejected.bridge(request());assert.equal(result.status,422);assert.doesNotMatch(await result.text(),/internal detail/);
   assert.equal(rejected.calls.find(c=>c[0]==='finish')[3],'rejected');assert.equal(rejected.calls.find(c=>c[0]==='finish').at(-1),true);
-  const cancelled=fixture({response:options=>new Response(new ReadableStream({start(output){output.enqueue(new TextEncoder().encode(frame({choices:[{delta:{content:'First'}}]})));options.signal.addEventListener('abort',()=>output.close(),{once:true});}}),{headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'3'}})});
+  const cancelled=fixture({response:options=>new Response(new ReadableStream({start(output){output.enqueue(new TextEncoder().encode(frame({choices:[{delta:{content:'First'}}]})));options.signal.addEventListener('abort',()=>output.close(),{once:true});}}),{headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'4'}})});
   const reader=(await cancelled.bridge(request())).body.getReader();await reader.read();await reader.cancel();
   assert.equal(cancelled.calls.find(c=>c[0]==='finish')[3],'cancelled');assert.equal(cancelled.calls.find(c=>c[0]==='finish').at(-1),false);
+});
+
+test('browser cancellation settles only after a matching cleanup acknowledgement and keeps waitUntil alive',async()=>{
+  let acknowledge,finish;const controller=new AbortController();
+  const f=fixture({
+    response:options=>new Response(new ReadableStream({start(output){
+      output.enqueue(new TextEncoder().encode(frame({choices:[{delta:{content:'First'}}]})));
+      options.signal.addEventListener('abort',()=>output.close(),{once:true});
+    }}),{headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'4'}}),
+    cancelResponse:async options=>{await new Promise(resolve=>{acknowledge=resolve});return Response.json({control:{...JSON.parse(options.body),workerStopped:true,outcome:'cancelled'}})},
+    store:{finish:async(...args)=>{f.calls.push(['finish',...args]);await new Promise(resolve=>{finish=resolve});return {state:'finished'}}},
+  });
+  const response=await f.bridge(new Request(request(),{signal:controller.signal}));
+  const reader=response.body.getReader();await reader.read();
+  let lifetimeEnded=false;void f.lifetimes[0].then(()=>{lifetimeEnded=true});
+  controller.abort();
+  while(!acknowledge)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.calls.some(c=>c[0]==='finish'),false);assert.equal(lifetimeEnded,false);
+  const cancel=f.calls.find(c=>c[0]==='worker'&&c[1]==='/api/cancel');assert.equal(cancel[2].signal.aborted,false);
+  acknowledge();while(!finish)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(lifetimeEnded,false);assert.equal(f.calls.find(c=>c[0]==='finish').at(-1),true);
+  finish();await f.lifetimes[0];await reader.cancel();assert.equal(lifetimeEnded,true);
+  assert.equal(f.calls.filter(c=>c[0]==='finish').length,1);
+});
+
+test('cancellation racing the database reservation refunds only before any worker dispatch',async()=>{
+  let admit;const controller=new AbortController();
+  const f=fixture({store:{reserve:async(...args)=>{f.calls.push(['reserve',...args]);await new Promise(resolve=>{admit=resolve})}}});
+  const result=f.bridge(new Request(request(),{signal:controller.signal}));
+  while(!admit)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.lifetimes.length,1);controller.abort();admit();
+  assert.equal((await result).status,503);await f.lifetimes[0];
+  assert.equal(f.calls.some(c=>c[0]==='worker'&&c[1]!=='/api/health'),false);
+  const settled=f.calls.find(c=>c[0]==='finish');assert.equal(settled[3],'rejected');assert.equal(settled.at(-1),true);
+});
+
+test('a stale or mismatched cleanup receipt cannot release the database lease',async()=>{
+  const f=fixture({response:()=>new Response(frame({control:{requestId:other,workerId,workerStopped:true,outcome:'completed'}})+'data: [DONE]\n\n',{
+    headers:{'Content-Type':'text/event-stream','X-Offscript-Protocol':'4'},
+  }),cancelResponse:()=>Response.json({control:{requestId:other,workerId,workerStopped:true,outcome:'cancelled'}})});
+  await assert.rejects((await f.bridge(request())).text(),/finalized/);await f.lifetimes[0];
+  assert.equal(f.calls.find(c=>c[0]==='finish').at(-1),false);
 });

@@ -7,6 +7,7 @@ import {timingSafeEqual} from 'node:crypto';
 import {readEvents} from '../src/stream.ts';
 import {createLlamaEngine} from './llama-engine.mjs';
 import {RequestError,validateRequest} from './request.mjs';
+import {createRequestRegistry} from './request-registry.mjs';
 export {validateRequest} from './request.mjs';
 
 const root=resolve(fileURLToPath(new URL('../dist/',import.meta.url)));
@@ -28,6 +29,7 @@ export function createGateway(options={}){
   if(apiOrigin){const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('PUBLIC_API_ORIGIN must be an exact HTTPS origin.');}
   const origins=new Set(options.origins||[process.env.PUBLIC_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site',...(apiOrigin?[apiOrigin]:[]),`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
   const queueLimit=options.queueLimit??32,queueTimeout=options.queueTimeout??300000,generationTimeout=options.generationTimeout??300000;
+  const registry=createRequestRegistry();
   let active=false,healthy=true;const waiting=[];
   async function acquire(signal){
     if(signal.aborted)throw new RequestError(499,'Request cancelled.');
@@ -45,7 +47,9 @@ export function createGateway(options={}){
   function release(){const next=waiting.shift();if(next)next.grant();else active=false}
   async function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end(JSON.stringify(data))}
   const server=http.createServer(async(req,res)=>{
-    let acquired=false,ctrl,workerStopped=true,started=false;res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
+    let acquired=false,ctrl,receipt,deadlineTimer,abort,workerStopped=true,started=false,completedSuccessfully=false;
+    const control = outcome => ({...(receipt?{requestId:receipt.requestId,workerId:receipt.workerId}:{}),workerStopped,outcome});
+    res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
     if(origin){
       if(!origins.has(origin))return void await json(res,403,{error:'This website is not allowed to use this server.'});
@@ -62,13 +66,22 @@ export function createGateway(options={}){
       if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
         const ready=healthy&&await engine.ready();
-        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:3,modes:['fast','deep']});
+        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:4,workerId:registry.workerId,modes:['fast','deep']});
+      }
+      if(path==='/api/cancel'&&req.method==='POST'){
+        if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+        return void await json(res,200,{control:await registry.cancel(await bodyJSON(req))});
       }
       if(path==='/api/chat'&&req.method==='POST'){
-        res.setHeader('X-Offscript-Protocol','3');
+        res.setHeader('X-Offscript-Protocol','4');
         if(req.headers['x-offscript-client']!=='web')throw new RequestError(403,'Invalid client.');
+        if(req.headers['x-offscript-request-id']!==undefined){
+          if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+          receipt=registry.register(req.headers['x-offscript-request-id'],req.headers['x-offscript-worker-id'],req.headers['x-offscript-request-deadline']);
+        }
+        ctrl=receipt?.controller||new AbortController();abort=()=>ctrl.abort();res.once('close',abort);
+        if(receipt)deadlineTimer=setTimeout(()=>ctrl.abort(),Math.max(0,receipt.expiresAt-Date.now()));
         const input=validateRequest(await bodyJSON(req));
-        ctrl=new AbortController();const abort=()=>ctrl.abort();res.once('close',abort);
         await acquire(ctrl.signal);acquired=true;
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // Slot cleanup must work before accepting content. Never expose slot endpoints.
@@ -81,6 +94,7 @@ export function createGateway(options={}){
         let completed=false;
         try{
           const prepared=await engine.prepare(input,ctrl.signal);
+          if(ctrl.signal.aborted)throw new RequestError(499,'Request cancelled.');
           started=true;workerStopped=false;
           const response=await engine.generate(prepared,ctrl.signal);
           res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no'});
@@ -101,11 +115,11 @@ export function createGateway(options={}){
           const cleared=await engine.dispose();
           workerStopped=cleared;
           if(!cleared)healthy=false;
-          res.removeListener('close',abort);
         }
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // DONE means the request's model state has actually been cleared.
-        if(!res.destroyed)res.end('data: {"control":{"workerStopped":true,"outcome":"completed"}}\n\ndata: [DONE]\n\n');
+        completedSuccessfully=completed;
+        if(!res.destroyed)res.end(`data: ${JSON.stringify({control:control('completed')})}\n\ndata: [DONE]\n\n`);
         return;
       }
       if(path==='/config.json'&&req.method==='GET'){
@@ -126,9 +140,13 @@ export function createGateway(options={}){
     }catch(error){
       if(res.destroyed)return;
       const message=error.status?error.message:ctrl?.signal.reason instanceof Error&&ctrl.signal.reason.name!=='AbortError'?ctrl.signal.reason.message:'The model connection failed. Please try again.';
-      const control={workerStopped,outcome:started?'failed':'rejected'};
-      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control})}\n\n`)}else await json(res,error.status||503,{error:message,control});
-    }finally{if(acquired)release()}
+      const proof=control(started?'failed':'rejected');
+      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control:proof})}\n\n`)}else await json(res,error.status||503,{error:message,control:proof});
+    }finally{
+      clearTimeout(deadlineTimer);if(abort)res.removeListener('close',abort);
+      if(acquired)release();
+      receipt?.finish(workerStopped,completedSuccessfully?'completed':started?'cancelled':'rejected');
+    }
   });
   server.requestTimeout=15000;server.headersTimeout=10000;server.keepAliveTimeout=5000;
   return server;
