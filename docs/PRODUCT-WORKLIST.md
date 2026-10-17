@@ -53,3 +53,6 @@ The account/acknowledgement interface is prepared behind PILOT_ACCOUNT_CONTROL. 
 ## Database compatibility validation
 
 The real Supabase project was inspected with metadata-only SELECTs: PostgreSQL 17.11, project admin is not a superuser, and Offscript tables/roles are absent. A matching isolated fixture reproduced the bootstrap ownership failure. The correction adds transaction-local role-creator membership and removes temporary schema CREATE after ownership transfer. Keep database enforcement off while the reviewed migration, private runtime credential, logical-answer quota accounting, policies/eligibility, recovery and retention remain unactivated.
+
+
+Logical-answer accounting and recovery implementation is specified in [ANSWER-ACCOUNTING.md](ANSWER-ACCOUNTING.md). Implement and validate it before enabling the existing per-request ledger around automatic continuations. The specification is not a claim that accounting is already active.
