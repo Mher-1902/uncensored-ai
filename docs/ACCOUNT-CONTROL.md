@@ -38,7 +38,7 @@ The bridge registers its admission/settlement lifetime with Vercel `waitUntil` b
 
 Worker receipts contain only random request/process IDs, deadline and outcome, never prompts, replies or user IDs. Completed receipts are pruned on subsequent admissions after their dispatch deadline; unsettled records are not evicted based on time. A bounded registry that cannot accept more records rejects new requests.
 
-Acceptance UI, linked final legal pages, operator recovery and provider-compatible database provisioning remain activation prerequisites. Do not enable enforcement on the deployed legacy worker or claim this API is already live.
+A feature-gated account/acknowledgement interface is now staged. It reads only the verified account, shows serving/allowance state and starts the agreement checkbox unchecked. It refuses to offer acceptance without both published database versions and explicit immutable document links in src/policy-documents.ts. That registry is intentionally empty while documents remain drafts. The UI does not decide eligibility or grant access; server checks remain authoritative. Both builds/SEO and 69 Node plus 4 Python tests passed in the offline Samsung check (peak 59°C). Browser verification of the activated flow, linked final documents, operator recovery, continuation-aware quota accounting and provider-compatible database provisioning remain activation prerequisites. Do not enable enforcement on the deployed legacy worker or claim this API is already live.
 
 ## Validation and activation
 

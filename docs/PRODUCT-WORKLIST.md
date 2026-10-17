@@ -43,3 +43,8 @@ Append new requests here with a short description and date. Promote them into th
 Disposable offline container using the same pinned runtime, Q4_K_M model, two threads, 4096 context and synthetic two-sentence prompt. Production container was unchanged. At 0.8 CPU, warm samples measured ~4.96–4.98 seconds to first text and ~3.10–3.13 decode tokens/sec. At 1.2 CPU, two samples measured ~3.27 seconds and ~4.72–4.75 tokens/sec; peak 74°C over the run. This is a small controlled comparison, not sustained-load or p95 evidence. A preceding 1.6 CPU run aborted on a combined resource guard and produced no valid 1.6 result. Do not remove the thermal guard or claim a measured 1.6 benefit. Validate sustained 1.2 CPU behavior before any production limit change.
 
 Account-control integration remains feature-gated. Automatic continuation currently represents several worker segments; logical-answer quota accounting must be reconciled before enabling pilot admissions, so a long answer does not silently consume a quota once per segment.
+
+
+## Staged account interface
+
+The account/acknowledgement interface is prepared behind PILOT_ACCOUNT_CONTROL. It fetches only the same-origin authenticated account API, keeps the agreement unchecked and requires explicit published document links. The policy registry remains empty while drafts are unfinished, so no draft is silently treated as a binding agreement. Server eligibility/admission remains separate. Samsung checks: both builds/SEO, 69 Node and 4 Python tests, peak 59°C. This interface is not activated; real database provisioning, age/guardian safeguards, immutable policy publication, continuation-aware accounting, operator reconciliation and retention still remain.
