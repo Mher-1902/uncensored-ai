@@ -20,7 +20,7 @@ The Samsung in Latvia currently runs the CPU LLM and private gateway and is stil
 ## Execution order
 
 1. Complete and visually verify the current small UI cleanup; release it from the deployed UI branch without pulling in unactivated backend work.
-2. Automatic answer continuation is being implemented on codex/complete-responses, together with exact assistant-prefix validation, partial-text preservation and removal of manual length controls. Validate the pinned inference runtime and roll out the native gateway first; the live frontend must not call an unsupported worker.
+2. Automatic answer continuation is live in PR #24, source 593406af68fc1304261774e98eb6132232cfaef1, Production 858XkfFikvUcbJ8jzE5o4dmdrbkM. Native gateway protocol 4 was deployed first; model/ingress were preserved. All CI passed. A fresh signed-in browser completed integers 1..100,END across the former cap in one message; exact text, #00FF00/Courier and no length selector/notice verified. Existing user chat tabs were preserved.
 3. Benchmark the existing model/runtime under bounded resources; separate first-token, prefill, decode and queue latency. Apply only measured changes with thermal limits and rollback.
 4. Integrate staged backend/account work with the accepted UI before any deployment. Never redeploy the old Matrix design from an older backend branch.
 5. Account/acceptance/usage interface, final truthful legal pages, provider-compatible restricted database role, controlled admissions, worker recovery and metadata retention.
@@ -56,3 +56,13 @@ The real Supabase project was inspected with metadata-only SELECTs: PostgreSQL 1
 
 
 Logical-answer accounting and recovery implementation is specified in [ANSWER-ACCOUNTING.md](ANSWER-ACCOUNTING.md). Implement and validate it before enabling the existing per-request ledger around automatic continuations. The specification is not a claim that accounting is already active.
+
+
+## Current release / activation checkpoint
+
+- Live website: https://offscript-ai.vercel.app/, source 593406af68fc1304261774e98eb6132232cfaef1. Protected Samsung gateway image sha256:52096327b90486adfa5203d2bf3deb6715bb8954aa50207d80f48bfbb6815605, protocol 4. Native and Vercel releases verified; startup overrides persisted.
+- CPU profile PR #26, source 88dfa0f: 1.0 CPU applied in place after all CI passed. Model process/image/container, memory and thermal limits preserved. Matching systemd/Compose startup override persists it. Same-prompt synthetic decode ~3.92 vs ~3.12 tokens/sec, first text ~4 vs ~5 seconds; longer test peak 72°C. This is a modest measured local improvement, not GPU speed or capacity proof.
+- Account/policy UI PR #25, source 800b429: all CI passed, feature remains off. Policy-link registry intentionally empty while documents are drafts; no legal acceptance or eligibility is fabricated.
+- Provider migration PR #27, source 64302f6: managed-role fixture 33 checks, standard-admin fixture 32; application, both database CI cases and Vercel passed. Container CI was still running at this checkpoint. Metadata-only Supabase reads confirmed Offscript tables/roles absent. Exact tested migration is prepared in the SQL Editor for review, not executed. No runtime password or production database credential has been created or read.
+- Draft #28, source 3cc254a: logical-answer accounting/recovery specification only. Implement it and its failure/concurrency tests before activating the existing per-worker quota ledger.
+- Remaining activation work: logical-answer ledger, restricted runtime provisioning, immutable final policies/acknowledgement, actual age/guardian flows, operator recovery and retention scheduling. Public registration is desired, but 50,000-MAU capacity is unverified and no paid resource is authorized.
