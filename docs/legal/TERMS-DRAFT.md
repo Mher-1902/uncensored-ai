@@ -12,6 +12,8 @@ Chats are temporary. Clearing, reloading or leaving the chat page removes its co
 
 ## Your account and use
 
+Offscript is intended for a broad audience. Access remains subject to applicable minimum-age rules and any required permission or verifiable consent from a parent or legal guardian. If those requirements apply to you, the required process must be completed before your account is activated. An ordinary agreement checkbox does not replace that process. We will describe available age/guardian arrangements before opening access to accounts that require them.
+
 Use an account you control and protect its sign-in methods. You must have the rights and permissions needed to submit your inputs, including any personal or confidential information about other people. Do not submit passwords, private keys or information you are not entitled to share.
 
 You are responsible for your inputs and for how you use, act on or share the responses. You must comply with applicable law and other people's rights. Do not use the service for unlawful activity, impersonation, fraud, violating others' privacy, or distributing unlawful material. Do not bypass account restrictions, access another person's data, interfere with the service, or evade usage limits.
@@ -48,4 +50,4 @@ Contact: [sukiasyanmher7@gmail.com](mailto:sukiasyanmher7@gmail.com).
 
 ---
 
-Publication blocker: an approved age/guardian eligibility clause has not been selected. This draft does not authorize unrestricted access for minors. Confirm the final service disclosures, applicable mandatory-law requirements and policy version before making it effective. See [publication notes](PUBLICATION.md).
+Publication blocker: the broad-audience direction is confirmed, but the age/guardian arrangements described above have not been implemented. This draft does not certify unrestricted access for children. Confirm those arrangements, final service disclosures, applicable mandatory-law requirements and policy version before making it effective. See [publication notes](PUBLICATION.md).

@@ -4,7 +4,7 @@ October 17, 2026. This is the active implementation direction. It supersedes the
 
 Offscript is a normal account-based SaaS for technical and nontechnical users worldwide, operated from Armenia. The goal is 50,000 monthly active users, not 50,000 simultaneous generations. Prove useful answers and repeat usage with a small existing-resource pilot before proposing any paid GPU rental. No paid service, plan, trial or automatic overage is authorized.
 
-The first release has Fast and Deep Think. Real source-backed Research, subscriptions, image generation and Cue integration follow as separate increments. Broad age access is a long-term goal; public access requires an approved age/guardian policy appropriate to the markets served. A checkbox is not proof of age or immunity from liability.
+The first release has Fast and Deep Think. Real source-backed Research, subscriptions, image generation and Cue integration follow as separate increments. The owner reconfirmed a broad audience on October 17; do not silently replace that direction with an adults-only default. Applicable age/guardian requirements still need concrete safeguards before admitting affected cohorts. A checkbox is not proof of age or immunity from liability, and the current implementation does not certify unrestricted child access.
 
 ## First implementation boundary
 
