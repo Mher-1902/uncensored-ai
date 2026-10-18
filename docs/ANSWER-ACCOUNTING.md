@@ -1,6 +1,6 @@
 # Automatic answers and account admission
 
-Implementation contract. Not an activated feature. Migration `202610170002_logical_answers.sql` implements the database lifecycle below; runtime/browser integration and its failure tests must follow before activation. The current deployed worker-request bridge would count automatic continuations as separate daily requests. Keep PILOT_ACCOUNT_CONTROL disabled until the complete logical-answer path is implemented and tested.
+Implementation contract. Not an activated feature. Migration `202610170002_logical_answers.sql` was owner-approved and installed on October 18. The protocol-5 runtime/browser integration and failure tests passed in PR #30, but remain staged. The currently deployed worker-request bridge would count automatic continuations as separate daily requests. Keep PILOT_ACCOUNT_CONTROL disabled until the logical-answer runtime is deployed and the remaining credential, policy/eligibility, recovery and retention gates are complete.
 
 ## Required behavior
 
@@ -42,4 +42,4 @@ This specification adds no 50,000-user capacity claim. The current Samsung still
 
 The second migration adds private forced-RLS answer and segment metadata. Admission and settlement share the foundation's settings lock. It issues owner-bound single-use continuation receipts only after known worker cleanup and validated token usage, holds capacity across the 30-second handoff, and disables the gateway's legacy per-worker admission functions. Initial Deep accounting includes the engine's additional thinking-token budget. A deletion trigger blocks Auth/account cascades while computation is active, waiting or uncertain; the deletion workflow must cancel and settle first.
 
-This migration is staged, not applied to the managed project. The already-applied foundation is recorded in [DATABASE-RELEASES.md](DATABASE-RELEASES.md). Runtime credential creation, deployment, policy/eligibility activation, operator reconciliation and retention scheduling remain separate release gates.
+Both migrations and the restricted NOLOGIN runtime role are installed in the managed project; see [DATABASE-RELEASES.md](DATABASE-RELEASES.md). Eleven read-only live checks passed after the October 18 release. Runtime credential creation, protocol-5 deployment, policy/eligibility activation, operator reconciliation and retention scheduling remain separate release gates.

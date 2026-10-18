@@ -1,12 +1,12 @@
 # Account control and answer admission
 
-The RLS foundation was approved and applied to the existing Supabase project on October 17. Its eleven live permission/configuration checks passed; see [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for the source/hash and migration-history gate. The logical-answer migration and protocol-5 runtime in this branch are staged. Production enforcement remains off. No runtime password, published policy, serving eligibility or chat database is created by this increment.
+The RLS foundation was approved and applied to the existing Supabase project on October 17. On October 18, the owner separately approved and installed the logical-answer migration and restricted NOLOGIN runtime role; eleven subsequent live permission/configuration checks passed. Both migrations are recorded in the official history. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for exact source hashes and release evidence. The tested protocol-5 runtime remains staged; the live native gateway is protocol 4 and production account enforcement remains off. No runtime password, published policy, serving eligibility or chat database was created.
 
 ## Privilege boundary
 
 `offscript_data_owner` is a NOLOGIN, non-superuser, non-BYPASSRLS owner with explicit internal policies. The foundation's five tables enable and force RLS. Authenticated users can SELECT only their own account, policy receipts and daily totals; they cannot write plan, ownership, status or eligibility. Anonymous users have no access. Migration 002 adds two private forced-RLS answer/segment metadata tables.
 
-`offscript_gateway` is a separate NOLOGIN group with parameterized functions in private `offscript_api` and no direct table access. Never expose this schema through PostgREST. The opt-in [runtime provisioning script](../supabase/admin/provision_runtime.sql) prepares `offscript_runtime` as a member of this group, initially **NOLOGIN**, with no password. It must never join the owner role or acquire administrative, BYPASSRLS or replication privileges. Neither migration contains a password. Migration 002 revokes the gateway's legacy per-worker reserve/finish functions.
+`offscript_gateway` is a separate NOLOGIN group with parameterized functions in private `offscript_api` and no direct table access. Never expose this schema through PostgREST. The opt-in [runtime provisioning script](../supabase/admin/provision_runtime.sql) installed `offscript_runtime` as a member of this group, with **NOLOGIN** and no password. Its restricted privileges, sole group membership, lack of direct table access and bounded settings were verified live. It must never join the owner role or acquire administrative, BYPASSRLS or replication privileges. Neither migration contains a password. Migration 002 revokes the gateway's legacy per-worker reserve/finish functions.
 
 ### Private runtime provisioning
 
