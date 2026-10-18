@@ -78,3 +78,51 @@ test('DONE without a model finish reason is not proof of a complete answer',asyn
   t.mock.method(globalThis,'fetch',async()=>event('Partial',null));
   await assert.rejects(reply({apiBase:'https://app.test/api',space:null},message,false,new AbortController().signal,()=>{},()=>{}),/did not confirm/);
 });
+
+const answerId='55555555-5555-4555-8555-555555555555',receipt='66666666-6666-4666-8666-666666666666';
+const gated={apiBase:'https://app.test/api',space:null,accountControl:true,requireAuth:true};
+function admittedEvent(text,reason,nextReceipt){
+  return new Response(`data: ${JSON.stringify({answer:{id:answerId}})}\n\ndata: ${JSON.stringify({choices:[{delta:{content:text},finish_reason:reason}]})}\n\n${nextReceipt?`data: ${JSON.stringify({answer:{id:answerId,receipt:nextReceipt}})}\n\n`:''}data: [DONE]\n\n`);
+}
+test('account-controlled continuations consume the issued receipt and preserve one answer identity',async t=>{
+  location(t);const bodies=[];let text='';
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    assert.equal(url,gated.apiBase+'/chat');bodies.push(JSON.parse(options.body));
+    return bodies.length===1?admittedEvent('First ','length',receipt):admittedEvent('second.','stop');
+  });
+  await reply(gated,message,true,new AbortController().signal,value=>{text=value},()=>{},'dummy-session');
+  assert.equal(text,'First second.');assert.equal(bodies.length,2);assert.equal(bodies[0].answerId,undefined);
+  assert.equal(bodies[1].answerId,answerId);assert.equal(bodies[1].receipt,receipt);assert.equal(bodies[1].mode,'fast');
+});
+test('Stop uses an independent authenticated metadata-only cancellation even between segments',async t=>{
+  location(t);const controller=new AbortController(),calls=[];let responseReleased=false;
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    calls.push([url,options]);
+    if(url.endsWith('/answer/cancel')){
+      assert.equal(options.signal.aborted,false);assert.equal(options.headers.Authorization,'Bearer dummy-session');assert.equal(options.keepalive,true);
+      assert.deepEqual(JSON.parse(options.body),{answerId});return new Response(new ReadableStream({start(output){output.enqueue(new TextEncoder().encode('{"state":"finished"}'))},cancel(){responseReleased=true}}));
+    }
+    return admittedEvent('Partial','length',receipt);
+  });
+  await assert.rejects(reply(gated,message,false,controller.signal,()=>controller.abort(),()=>{},'dummy-session'),{name:'AbortError'});
+  assert.deepEqual(calls.map(call=>call[0]),[gated.apiBase+'/chat',gated.apiBase+'/answer/cancel']);
+  assert.equal(responseReleased,true);
+});
+test('a missing receipt or broken later stream preserves partial text and settles the known answer',async t=>{
+  location(t);let chatCalls=0,cancels=0,text='';
+  t.mock.method(globalThis,'fetch',async url=>{
+    if(url.endsWith('/answer/cancel')){cancels++;return Response.json({state:'finished'})}
+    chatCalls++;return admittedEvent('Partial','length');
+  });
+  await assert.rejects(reply(gated,message,false,new AbortController().signal,value=>{text=value},()=>{},'dummy-session'),/continued safely/);
+  assert.equal(text,'Partial');assert.equal(chatCalls,1);assert.equal(cancels,1);
+});
+test('account-controlled streams reject a changed answer identity and cannot send the session off-origin',async t=>{
+  location(t);let cancels=0;
+  t.mock.method(globalThis,'fetch',async url=>{
+    if(url.endsWith('/answer/cancel')){cancels++;return Response.json({state:'finished'})}
+    return new Response(`data: {"answer":{"id":"${answerId}"}}\n\ndata: {"answer":{"id":"${receipt}"}}\n\ndata: [DONE]\n\n`);
+  });
+  await assert.rejects(reply(gated,message,false,new AbortController().signal,()=>{},()=>{},'dummy-session'),/verified/);assert.equal(cancels,1);
+  await assert.rejects(reply({...gated,apiBase:'https://foreign.test/api'},message,false,new AbortController().signal,()=>{},()=>{},'dummy-session'),/own API/);
+});

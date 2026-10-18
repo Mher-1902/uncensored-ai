@@ -66,22 +66,29 @@ export function createGateway(options={}){
       if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
         const ready=healthy&&await engine.ready();
-        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:4,workerId:registry.workerId,modes:['fast','deep']});
+        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:5,workerId:registry.workerId,modes:['fast','deep']});
       }
       if(path==='/api/cancel'&&req.method==='POST'){
         if(!accessToken)throw new RequestError(503,'Service authentication is required.');
         return void await json(res,200,{control:await registry.cancel(await bodyJSON(req))});
       }
+      if(path==='/api/prepare'&&req.method==='POST'){
+        if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+        return void await json(res,200,registry.prepare(await bodyJSON(req)));
+      }
       if(path==='/api/chat'&&req.method==='POST'){
-        res.setHeader('X-Offscript-Protocol','4');
+        res.setHeader('X-Offscript-Protocol','5');
         if(req.headers['x-offscript-client']!=='web')throw new RequestError(403,'Invalid client.');
         if(req.headers['x-offscript-request-id']!==undefined){
           if(!accessToken)throw new RequestError(503,'Service authentication is required.');
-          receipt=registry.register(req.headers['x-offscript-request-id'],req.headers['x-offscript-worker-id'],req.headers['x-offscript-request-deadline']);
+          if(req.headers['x-offscript-prepared']!==undefined && req.headers['x-offscript-prepared']!=='true')throw new RequestError(400,'Invalid prepared request.');
+          receipt=registry[req.headers['x-offscript-prepared']==='true'?'claim':'register'](req.headers['x-offscript-request-id'],req.headers['x-offscript-worker-id'],req.headers['x-offscript-request-deadline']);
         }
         ctrl=receipt?.controller||new AbortController();abort=()=>ctrl.abort();res.once('close',abort);
         if(receipt)deadlineTimer=setTimeout(()=>ctrl.abort(),Math.max(0,receipt.expiresAt-Date.now()));
-        const input=validateRequest(await bodyJSON(req));
+        // Only the credential-authenticated admission bridge can clamp a final
+        // continuation below the public preset sizes.
+        const input=validateRequest(await bodyJSON(req),{allowBoundedTokens:Boolean(receipt)});
         await acquire(ctrl.signal);acquired=true;
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // Slot cleanup must work before accepting content. Never expose slot endpoints.

@@ -1,10 +1,10 @@
 name: Database isolation
 on:
   pull_request:
-    paths: ['supabase/**', 'scripts/test_database.py', 'scripts/test-database-client.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', '.github/workflows/database.yml']
   push:
     branches: [main]
-    paths: ['supabase/**', 'scripts/test_database.py', 'scripts/test-database-client.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', '.github/workflows/database.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,4 +34,36 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Prepare pinned fixture dependencies
+        run: |
+          npm ci --ignore-scripts --prefix cloud/vercel-gateway
+          docker pull node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+      - name: Restrict disposable PostgreSQL to isolated loopback
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          for fixture_network in $(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$FIXTURE_ID"); do
+            docker network disconnect "$fixture_network" "$FIXTURE_ID"
+          done
       - run: python3 scripts/test_database.py --container '${{ job.services.postgres.id }}' ${{ matrix.migration == 'managed-project' && '--provider-role' || '' }}
+      - name: Exercise client, binding, native cleanup and real SQL together
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          fixture_client='offscript-answer-stack-${{ matrix.migration }}'
+          trap 'docker rm -f "$fixture_client" >/dev/null 2>&1 || true' EXIT
+          timeout 90s docker run --name "$fixture_client" \
+            --network "container:$FIXTURE_ID" --read-only --user 1000:1000 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --cpus .5 --memory 512m --memory-swap 512m --pids-limit 64 \
+            --ulimit core=0 --ulimit fsize=8388608 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16777216 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/app,readonly" \
+            --entrypoint /usr/bin/env \
+            node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+            -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
+            NODE_OPTIONS=--max-old-space-size=128 OFFSCRIPT_TEST_FIXTURE=disposable-postgres \
+            node /app/scripts/test-answer-stack.mjs

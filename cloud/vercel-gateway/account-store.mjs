@@ -7,6 +7,8 @@ const faults = {
   quota_exceeded: [429, 'Your daily allowance has been reached.'],
   request_in_progress: [429, 'Your account already has a request in progress.'],
   capacity_busy: [429, 'The server is at capacity. Please try again later.'],
+  continuation_invalid: [409, 'This answer can no longer continue. The text received so far is kept.'],
+  answer_missing: [409, 'This answer is no longer available. The text received so far is kept.'],
 };
 export class AccountError extends Error {
   constructor(code = 'account_unavailable') {
@@ -70,7 +72,9 @@ export function createAccountStore({env = process.env, poolFactory} = {}) {
   return {
     account: user => call('SELECT offscript_api.account($1::uuid) AS result', [user]),
     accept: (user, terms, privacy) => call('SELECT offscript_api.accept_policies($1::uuid,$2::text,$3::text) AS result', [user, terms, privacy]),
-    reserve: (user, request, mode, maxTokens) => call('SELECT offscript_api.reserve_request($1::uuid,$2::uuid,$3::text,$4::integer) AS result', [user, request, mode, maxTokens]),
-    finish: (user, request, outcome, promptTokens, completionTokens, workerStopped) => call('SELECT offscript_api.finish_request($1::uuid,$2::uuid,$3::text,$4::integer,$5::integer,$6::boolean) AS result', [user, request, outcome, promptTokens, completionTokens, workerStopped]),
+    startAnswer: (user, answer, request, worker, mode, maxTokens) => call('SELECT offscript_api.start_answer($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text,$6::integer) AS result', [user, answer, request, worker, mode, maxTokens]),
+    continueAnswer: (user, answer, receipt, request, worker, maxTokens) => call('SELECT offscript_api.continue_answer($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::integer) AS result', [user, answer, receipt, request, worker, maxTokens]),
+    finishSegment: (user, answer, request, worker, outcome, promptTokens, completionTokens, finishReason, visible, workerStopped) => call('SELECT offscript_api.finish_answer_segment($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text,$6::integer,$7::integer,$8::text,$9::boolean,$10::boolean) AS result', [user, answer, request, worker, outcome, promptTokens, completionTokens, finishReason, visible, workerStopped]),
+    cancelAnswer: (user, answer) => call('SELECT offscript_api.cancel_answer($1::uuid,$2::uuid) AS result', [user, answer]),
   };
 }

@@ -45,3 +45,24 @@ test('bounded receipts expire without permitting a delayed replay to start',asyn
   assert.throws(()=>registry.register(requestId,workerId,deadline),/expired/);
   assert.throws(()=>registry.register(requestId,workerId,String(clock+300001)),/expired/);
 });
+test('Stop before dispatch permanently aborts the prepared claim without claiming unknown work stopped',async()=>{
+  const registry=createRequestRegistry({workerId}),deadline=String(Date.now()+10000);
+  assert.deepEqual(registry.prepare({requestId,workerId,deadline}),{prepared:true,requestId,workerId});
+  assert.deepEqual(await registry.cancel({requestId,workerId}),{requestId,workerId,workerStopped:true,outcome:'rejected'});
+  const claimed=registry.claim(requestId,workerId,deadline);assert.equal(claimed.controller.signal.aborted,true);
+  assert.throws(()=>registry.claim(requestId,workerId,deadline),/unavailable/);
+  assert.equal((await registry.cancel({requestId:otherWorker,workerId})).workerStopped,false);
+});
+test('undispatched rejected admissions can discard preparation; active work cannot be discarded',async()=>{
+  const registry=createRequestRegistry({workerId,limit:1}),deadline=String(Date.now()+10000);
+  registry.prepare({requestId,workerId,deadline});await registry.cancel({requestId,workerId,discard:true});
+  registry.prepare({requestId:otherWorker,workerId,deadline});const active=registry.claim(otherWorker,workerId,deadline);
+  const cancellation=registry.cancel({requestId:otherWorker,workerId,discard:true},5);assert.equal((await cancellation).workerStopped,false);
+  assert.throws(()=>registry.prepare({requestId,workerId,deadline}),/busy/);active.finish(true,'cancelled');
+});
+test('unclaimed preparations expire safely while claimed computation remains retained',()=>{
+  let clock=Date.now();const registry=createRequestRegistry({workerId,now:()=>clock,limit:1});
+  const deadline=String(clock+1000);registry.prepare({requestId,workerId,deadline});clock+=1001;
+  registry.prepare({requestId:otherWorker,workerId,deadline:String(clock+1000)});
+  assert.throws(()=>registry.claim(requestId,workerId,deadline),/unavailable/);
+});

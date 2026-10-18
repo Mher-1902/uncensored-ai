@@ -1,6 +1,6 @@
 # Product worklist
 
-Updated October 17, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated October 18, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
 
 ## Current owner requirements
 
@@ -55,7 +55,7 @@ The account/acknowledgement interface is prepared behind PILOT_ACCOUNT_CONTROL. 
 The real Supabase project was inspected with metadata-only SELECTs: PostgreSQL 17.11 and a project admin that is not a superuser. A matching isolated fixture reproduced the bootstrap ownership failure. The correction adds transaction-local role-creator membership and removes temporary schema CREATE after ownership transfer. The owner approved the corrected foundation, and it was applied on October 17; all eleven live permission/configuration checks passed. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for the exact hash and migration-history gate. Keep enforcement off while private runtime provisioning, logical-answer accounting, policies/eligibility, recovery and retention remain unactivated.
 
 
-Logical-answer accounting and recovery implementation is specified in [ANSWER-ACCOUNTING.md](ANSWER-ACCOUNTING.md). Implement and validate it before enabling the existing per-request ledger around automatic continuations. The specification is not a claim that accounting is already active.
+Logical-answer accounting is specified in [ANSWER-ACCOUNTING.md](ANSWER-ACCOUNTING.md). The staged database implementation is in PR #29, source 573c49b: 67 managed-project and 66 standard-admin checks passed locally, and all application/database/Docker/Vercel checks passed. Runtime integration is in progress. Do not enable the deployed per-worker ledger around automatic continuations or claim the new accounting is active.
 
 
 ## Current release / activation checkpoint
@@ -65,4 +65,6 @@ Logical-answer accounting and recovery implementation is specified in [ANSWER-AC
 - Account/policy UI PR #25, source 800b429: all CI passed, feature remains off. Policy-link registry intentionally empty while documents are drafts; no legal acceptance or eligibility is fabricated.
 - Provider migration PR #27, source 64302f6: managed-role fixture 33 checks, standard-admin fixture 32; all CI passed, including Docker. After explicit owner approval, the exact tested foundation was applied in the existing Supabase project; eleven live RLS/permissions/configuration checks passed. No runtime password or production database credential has been created or read. Admission remains off; reconcile manual migration history before any automated database deployment.
 - Draft #28, source 3cc254a: logical-answer accounting/recovery specification only. Implement it and its failure/concurrency tests before activating the existing per-worker quota ledger.
+- Logical-answer ledger #29, source 573c49b: database implementation staged, with all checks passed. It is not applied to Supabase. The approved migration was the foundation only. Native protocol-5, browser receipt/Stop and bridge integration are being validated on a separate branch; no production flag or service was changed.
+- October 18 runtime validation: both builds/SEO, 82 Node and 4 Python tests passed in the offline Samsung container (peak 60°C). Real PostgreSQL plus the client/binding/actual native HTTP gateway passed completion, Stop during inference, Stop between segments and Stop after admission before dispatch. The last case verifies no model generation and no request/token charge. A cancellable worker preparation precedes SQL admission; late dispatches claim an aborted identity. Combined fixtures exposed and fixed cancellation classification and an unread response/timer cleanup path. This is staged protocol-5 work, not a production deployment or model-speed improvement.
 - Remaining activation work: logical-answer ledger, restricted runtime provisioning, immutable final policies/acknowledgement, actual age/guardian flows, operator recovery and retention scheduling. Public registration is desired, but 50,000-MAU capacity is unverified and no paid resource is authorized.

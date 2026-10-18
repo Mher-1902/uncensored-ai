@@ -1,8 +1,9 @@
 export class RequestError extends Error{constructor(status,message){super(message);this.status=status}}
-export function validateRequest(value){
+export function validateRequest(value,{allowBoundedTokens=false}={}){
   if(!value||typeof value!=='object'||!Array.isArray(value.messages)||!value.messages.length)throw new RequestError(400,'Send a message first.');
   const mode=value.mode??(typeof value.reasoned==='boolean'?(value.reasoned?'deep':'fast'):null);
-  if(!['fast','deep'].includes(mode)||![256,512,1024].includes(value.maxTokens)||(value.reasoned!==undefined&&(typeof value.reasoned!=='boolean'||value.reasoned!==(mode==='deep'))))throw new RequestError(400,'Invalid reply settings.');
+  const validTokens=allowBoundedTokens?Number.isInteger(value.maxTokens)&&value.maxTokens>=1&&value.maxTokens<=1024:[256,512,1024].includes(value.maxTokens);
+  if(!['fast','deep'].includes(mode)||!validTokens||(value.reasoned!==undefined&&(typeof value.reasoned!=='boolean'||value.reasoned!==(mode==='deep'))))throw new RequestError(400,'Invalid reply settings.');
   if(value.continuation!==undefined&&typeof value.continuation!=='boolean')throw new RequestError(400,'Invalid continuation.');
   const continuation=value.continuation===true;
   if(continuation&&mode!=='fast')throw new RequestError(400,'Continue the answer without starting another thinking phase.');

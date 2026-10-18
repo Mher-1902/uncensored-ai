@@ -62,7 +62,7 @@ test('validates multi-turn history and rejects injected roles/settings',()=>{
 });
 test('streams a reply and erases cache before and after it',async t=>{
   const app=await run(t);const response=await app.send();assert.equal(response.status,200);const text=await response.text();assert.match(text,/Hello 🌍/);
-  assert.equal(response.headers.get('x-offscript-protocol'),'4');assert.match(text,/"workerStopped":true,"outcome":"completed"/);assert.ok(text.indexOf('workerStopped')<text.indexOf('[DONE]'));
+  assert.equal(response.headers.get('x-offscript-protocol'),'5');assert.match(text,/"workerStopped":true,"outcome":"completed"/);assert.ok(text.indexOf('workerStopped')<text.indexOf('[DONE]'));
   assert.match(response.headers.get('x-robots-tag'),/noindex/);
   await new Promise(resolve=>setImmediate(resolve));assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,2);
   const request=app.calls.find(c=>c.path==='/v1/chat/completions').body;assert.equal(request.cache_prompt,false);assert.equal(request.id_slot,0);assert.equal(request.chat_template_kwargs.enable_thinking,false);
@@ -144,6 +144,18 @@ test('invalid client and JSON envelopes never reach inference',async t=>{
   assert.equal((await request('{')).status,400);
   assert.equal((await request(JSON.stringify({...input,maxTokens:64}))).status,400);
   assert.equal(app.calls.length,0);
+});
+test('only a credential-authenticated tracked request can use a final clamped token allowance',async t=>{
+  const accessToken='t'.repeat(40),app=await run(t,{accessToken});
+  const health=await (await fetch(`${app.url}/api/health`)).json();assert.equal(health.protocol,5);
+  const body={...input,maxTokens:66,continuation:true,messages:[{role:'user',content:'Hello'},{role:'assistant',content:'Prefix '}]};
+  const tracking={'X-Offscript-Request-ID':'11111111-1111-4111-8111-111111111111','X-Offscript-Worker-ID':health.workerId,'X-Offscript-Request-Deadline':String(Date.now()+10000)};
+  const send=extra=>fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,...extra},body:JSON.stringify(body)});
+  assert.equal((await send(tracking)).status,401);
+  assert.equal((await send({Authorization:`Bearer ${accessToken}`})).status,400);
+  const response=await send({...tracking,Authorization:`Bearer ${accessToken}`});assert.equal(response.status,200);await response.text();
+  assert.equal(app.calls.find(call=>call.path==='/v1/chat/completions').body.max_tokens,66);
+  for(const maxTokens of [0,1025,2.5,'66'])assert.throws(()=>validateRequest({...body,maxTokens},{allowBoundedTokens:true}));
 });
 test('oversized JSON receives a bounded rejection before inference',async t=>{
   const app=await run(t);

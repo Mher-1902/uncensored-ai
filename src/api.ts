@@ -55,30 +55,41 @@ export async function checkModel(config:SiteConfig):Promise<boolean>{
 // actual assistant prefix; no synthetic user turn or durable chat is created.
 export async function reply(config:SiteConfig,messages:Message[],reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void,accessToken?:string|null){
   if(!config.apiBase){if(config.space){await cloudReply(config.space,messages,1024,signal,onText,onStatus);return}throw Error('The model is not connected yet. No message was sent.')}
-  if(config.requireAuth&&!accessToken)throw Error('Sign in before sending a message.');
+  if((config.requireAuth||config.accountControl)&&!accessToken)throw Error('Sign in before sending a message.');
   if(accessToken&&new URL(config.apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
   const headers:Record<string,string>={'Content-Type':'application/json','X-Offscript-Client':'web'};
   if(accessToken)headers.Authorization=`Bearer ${accessToken}`;
-  let text='';
+  const validId=(value:unknown):value is string=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  let text='',answerId:string|null=null,receipt:string|null=null,completed=false;
+  try {
   for(let segment=0;segment<16;segment++){
     signal.throwIfAborted();
     const continuation=segment>0;
     const history=messages.map(({role,content})=>({role,content}));
     if(continuation)history.push({role:'assistant',content:text});
     const deep=reasoned&&!continuation;
-    const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:history,maxTokens:256,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true}:{})}),signal,cache:'no-store'});
+    if(config.accountControl&&continuation&&(!answerId||!receipt))throw Error('The answer could not be continued safely. The text received so far is kept.');
+    const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:history,maxTokens:256,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(config.accountControl?{answerId,receipt}:{})}:{})}),signal,cache:'no-store'});
     if(!response.ok){
       const body=await response.json().catch(()=>null);
       if(response.status===422)throw Error('This conversation has filled the model context. Your answer so far is kept; start a new chat for another question.');
       throw Error(body?.error||`The model is unavailable (${response.status}).`);
     }
     if(!response.body)throw Error('The model returned no stream.');
-    let finished=false,finishReason:string|null=null,segmentText='';
+    let finished=false,finishReason:string|null=null,segmentText='',nextReceipt:string|null=null,receivedAnswer=false;
     for await(const data of readEvents(response.body)){
       signal.throwIfAborted();
       if(data==='[DONE]'){finished=true;break}
       const event=JSON.parse(data);
       if(event.error)throw Error(event.error);
+      if(config.accountControl&&event.answer!==undefined){
+        if(!validId(event.answer?.id)||answerId&&event.answer.id!==answerId||event.answer.receipt!==undefined&&!validId(event.answer.receipt))throw Error('The answer could not be verified. The text received so far is kept.');
+        answerId=event.answer.id;receivedAnswer=true;
+        if(event.answer.receipt!==undefined){
+          if(nextReceipt)throw Error('The answer could not be verified. The text received so far is kept.');
+          nextReceipt=event.answer.receipt;
+        }
+      }
       if(event.status)onStatus(event.status);
       const choice=event.choices?.[0],delta=choice?.delta;
       if(delta?.reasoning_content)onStatus('Thinking through your question…');
@@ -91,13 +102,29 @@ export async function reply(config:SiteConfig,messages:Message[],reasoned:boolea
       if(choice?.finish_reason)finishReason=choice.finish_reason;
     }
     if(!finished)throw Error('The connection ended before the reply finished. The text received so far is kept.');
+    if(config.accountControl&&!receivedAnswer)throw Error('The answer could not be verified. The text received so far is kept.');
     text+=segmentText;
     if(finishReason==='stop'){
       if(!text.trim())throw Error('The model produced no final answer. Try Fast mode.');
-      return;
+      completed=true;return;
     }
     if(finishReason!=='length')throw Error('The model did not confirm a complete answer. The text received so far is kept.');
     if(!segmentText)throw Error('The model stopped before writing an answer. Try Fast mode.');
+    receipt=nextReceipt;
   }
   throw Error('The model could not finish this answer within the conversation budget. The text received so far is kept.');
+  } catch(error) {
+    // A proxy can report stream failure before the abort reaches its reader.
+    // Preserve Stop as cancellation instead of surfacing a connection error.
+    signal.throwIfAborted();throw error;
+  } finally {
+    if(config.accountControl&&answerId&&!completed){
+      // This signal is independent of Stop, including the gap between segments.
+      // It carries only the opaque answer ID, never conversation text.
+      try {
+        const cancellation=await fetch(`${config.apiBase}/answer/cancel`,{method:'POST',headers,body:JSON.stringify({answerId}),signal:AbortSignal.timeout(30000),cache:'no-store',keepalive:true});
+        await cancellation.body?.cancel();
+      }catch{/* The server retains uncertain work for reconciliation. */}
+    }
+  }
 }

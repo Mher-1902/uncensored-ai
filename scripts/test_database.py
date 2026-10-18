@@ -341,4 +341,6 @@ check('finished answer and worker metadata are pruned together',query('SELECT (S
 check('new tables have no conversation or identity-tracking fields',query("SELECT count(*) FROM information_schema.columns WHERE table_schema='offscript_private' AND column_name IN ('prompt','content','messages','response','reply','reasoning','ip','birthdate','oauth_token','content_hash');")=='0')
 query(f"DELETE FROM auth.users WHERE id='{A}';")
 check('account deletion cascades answer metadata after settlement',query(f"SELECT count(*) FROM offscript_private.answers WHERE user_id='{A}';")=='0')
+if args.local_fixture:
+    subprocess.run(['node',str(root/'scripts/test-answer-stack.mjs')],check=True,timeout=60)
 print(json.dumps({'database_checks':len(checks),'result':'passed'}),flush=True)
