@@ -44,3 +44,10 @@
 /* A true black terminal canvas for replies; the illustrated welcome stays intact. */
 .in-chat{background:#0a0a0a}
 .assistant .markdown pre{background:#000}
+
+/* Recovery belongs to the affected reply; no connection banner while typing. */
+.reply-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:14px}
+.reply-actions .copy{padding:0}
+.reply-outcome,.reply-wait{font:12px/1.5 var(--mono);color:var(--muted)}
+.reply-wait{margin:14px 0 0!important}
+.retry-reply{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:4px 0;color:var(--accent);font:12px var(--mono)}

@@ -57,10 +57,13 @@ export async function forward(request, base, route, {headers = {}, fetchImpl = f
       headers: {...headers, ...(body ? {'Content-Type': 'application/json'} : {})},
     });
     if (!upstream.ok) {
-      // Only recognized account codes receive specific public wording.
+      // Only recognized codes receive fixed public wording; never relay diagnostics.
       if(upstream.headers.get('content-type')?.split(';',1)[0]==='application/json') {
         try {
           const value=await bodyJSON(upstream,controller.signal);
+          if(upstream.status===503 && value?.code==='model_busy') {
+            cleanup();return json(503,{error:'The model is busy. Please try again in a moment.',code:'model_busy'});
+          }
           const safe=new AccountError(value?.code);
           if(value?.code===safe.code && upstream.status===safe.status) {cleanup();return json(safe.status,{error:safe.message,code:safe.code});}
         } catch { /* Untrusted upstream diagnostics remain redacted. */ }

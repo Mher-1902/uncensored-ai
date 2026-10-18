@@ -36,6 +36,13 @@ async function run(t,options={}){
   const send=(body=input,signal)=>fetch(`${url}/api/chat`,{method:'POST',headers,body:JSON.stringify(body),signal});
   return {...mock,url,send,server};
 }
+async function queued(app,count){
+  for(let attempt=0;attempt<200;attempt++){
+    if((await (await fetch(`${app.url}/api/health`)).json()).queued===count)return;
+    await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  assert.fail(`Queue did not reach ${count} waiting requests`);
+}
 test('SSE preserves split UTF-8, CRLF and multi-line data',async()=>{
   const bytes=new TextEncoder().encode('data: 🌍\r\ndata: hello\r\n\r\ndata: [DONE]\n\n');
   const body=new ReadableStream({start(c){for(const byte of bytes)c.enqueue(Uint8Array.of(byte));c.close()}});
@@ -83,8 +90,58 @@ test('an optional service credential protects inference without breaking health 
   const accepted=await fetch(`${app.url}/api/chat`,{method:'POST',headers:{...headers,Authorization:`Bearer ${accessToken}`},body:JSON.stringify(input)});
   assert.equal(accepted.status,200);assert.match(await accepted.text(),/Hello/);
 });
-test('concurrent callers share one inference slot',async t=>{
-  const app=await run(t);const responses=await Promise.all(Array.from({length:10},async()=>{const r=await app.send();return r.text()}));assert.equal(responses.length,10);assert.equal(app.maxBusy(),1);assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,20);
+test('the default single-worker queue rejects a third request and completes the admitted pair',{timeout:5000},async t=>{
+  const app=await run(t,{hold:true});const first=app.send();
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  const second=app.send();await queued(app,1);
+  const rejected=await app.send();assert.equal(rejected.status,503);
+  assert.equal(rejected.headers.get('x-offscript-protocol'),'4');
+  assert.deepEqual(await rejected.json(),{error:'The model is busy. Please try again in a moment.',code:'model_busy',control:{workerStopped:true,outcome:'rejected'}});
+  assert.equal(app.controls.length,1);await queued(app,1);
+  app.controls[0].write();assert.match(await (await first).text(),/Hello 🌍[\s\S]*\[DONE\]/);
+  while(app.controls.length<2)await new Promise(resolve=>setTimeout(resolve,5));
+  app.controls[1].write();assert.match(await (await second).text(),/Hello 🌍[\s\S]*\[DONE\]/);
+  assert.equal(app.maxBusy(),1);assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,4);await queued(app,0);
+});
+test('a waiting request times out without starting inference and releases its queue place',{timeout:5000},async t=>{
+  const app=await run(t,{hold:true,queueTimeout:500});const first=app.send();
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  const timedOut=app.send();await queued(app,1);
+  const rejected=await timedOut;assert.equal(rejected.status,503);assert.equal((await rejected.json()).code,'model_busy');
+  await queued(app,0);assert.equal(app.controls.length,1);
+  app.controls[0].write();assert.match(await (await first).text(),/\[DONE\]/);
+  const next=app.send();while(app.controls.length<2)await new Promise(resolve=>setTimeout(resolve,5));
+  app.controls[1].write();assert.match(await (await next).text(),/Hello 🌍/);
+  assert.equal(app.controls.length,2);assert.equal(app.maxBusy(),1);
+});
+test('an automatic continuation outlasts the new-question wait limit behind an admitted question',{timeout:5000},async t=>{
+  const app=await run(t,{hold:true,queueTimeout:500});const first=app.send();
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  const second=app.send();await queued(app,1);
+  app.controls[0].write();assert.match(await (await first).text(),/Hello 🌍[\s\S]*\[DONE\]/);
+  while(app.controls.length<2)await new Promise(resolve=>setTimeout(resolve,5));
+  const continuation=app.send({...input,continuation:true,messages:[...input.messages,{role:'assistant',content:'Hello 🌍'}]});
+  await queued(app,1);
+  // Continuations count towards the new-work bound, so another question cannot pile ahead.
+  const rejected=await app.send();assert.equal(rejected.status,503);assert.equal((await rejected.json()).code,'model_busy');
+  await new Promise(resolve=>setTimeout(resolve,550));
+  await queued(app,1);assert.equal(app.controls.length,2);
+  app.controls[1].write();assert.match(await (await second).text(),/Hello 🌍[\s\S]*\[DONE\]/);
+  while(app.controls.length<3)await new Promise(resolve=>setTimeout(resolve,5));
+  app.controls[2].write();const response=await continuation;assert.equal(response.status,200);assert.match(await response.text(),/Hello 🌍[\s\S]*\[DONE\]/);
+  assert.equal(app.controls.length,3);assert.equal(app.maxBusy(),1);assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,6);await queued(app,0);
+});
+test('Stop while queued removes the request and it never dispatches after the active reply',{timeout:5000},async t=>{
+  const app=await run(t,{hold:true});const first=app.send();
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  const controller=new AbortController();const second=app.send(input,controller.signal);
+  const cancelled=assert.rejects(second,error=>error.name==='AbortError');await queued(app,1);
+  controller.abort();await cancelled;await queued(app,0);assert.equal(app.controls.length,1);
+  app.controls[0].write();assert.match(await (await first).text(),/\[DONE\]/);
+  const next=app.send();while(app.controls.length<2)await new Promise(resolve=>setTimeout(resolve,5));
+  app.controls[1].write();assert.match(await (await next).text(),/Hello 🌍/);
+  assert.equal(app.calls.filter(c=>c.path==='/v1/chat/completions').length,2);
+  assert.equal(app.calls.filter(c=>c.path==='/slots/0').length,4);assert.equal(app.maxBusy(),1);
 });
 test('unavailable health, oversized context and forbidden origin fail honestly',async t=>{
   const app=await run(t,{offline:true,long:true});assert.equal((await fetch(`${app.url}/api/health`)).status,503);assert.equal((await app.send()).status,422);
