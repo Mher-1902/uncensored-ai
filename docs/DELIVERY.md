@@ -6,6 +6,14 @@ Protect `main` with required CI and PRs. The manual **Deploy reviewed backend** 
 
 Current account limitation, checked October 13, 2026: GitHub returned HTTP 403 for branch protection on this private repository, requesting GitHub Pro or a public repository. Required merge gates are therefore not enforced yet. Keep the repository private and follow the PR/CI process manually until the owner chooses a supported plan. Deployment credentials and environment gates have not been configured; automated production delivery is not active.
 
+## October 19 integration candidate
+
+`codex/pilot-integration` preserves reviewed commit history while combining staged account source `d23180f`, the live first-answer recovery source `25c605d` and CPU profile `88dfa0f`. Review the merge resolutions, run the Samsung application/Docker/database/combined-stack checks and verify the installed migration hashes before merging its main PR. Do not replay obsolete UI releases or re-run migration 001 merely to close the stacked PR backlog.
+
+Vercel publication and the manual Samsung workflow are separate operations. Confirm the configured production branch, Production environment and provider automation before a main merge. The integration is intended to ship with `PILOT_ACCOUNT_CONTROL` absent or `false`, the restricted runtime still NOLOGIN, and draft policies unpublished. The old backend workflow must not be dispatched as an incidental part of updating main. A later protocol-5 native rollout needs its own exact-image/cleanup checks and rollback; enabling account admission requires all gates in [ACCOUNT-CONTROL.md](ACCOUNT-CONTROL.md).
+
+The current rollback baseline is frontend source `25c605d`, Vercel Production `9nuVEzNVxc3zc4R77FZtU1bwycbV`, native source `bc228fa`/protocol 4/image `sha256:5841855aba06095441f5b8774790c268ceaabc3000e3226a3ef3b8293805de72`, with the existing model, ingress and 1.0 CPU profile preserved. Rebuilding for Production uses its Production settings; promoting a Preview with different variables is not equivalent. Existing temporary conversation tabs must not be reloaded during validation.
+
 ## Deployment setup
 
 The workflow is committed code, but remains inactive until the following operator-owned configuration exists:
