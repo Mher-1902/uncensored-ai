@@ -34,6 +34,8 @@ The Samsung in Latvia currently runs the CPU LLM and private gateway and is stil
 
 ## October 19 visual corrections
 
+- Follow-up after PR #43: the owner requested the mode menu below its button. Open it beneath the composer border, reserve space in the pinned chat layout and reveal it on short mobile screens without flipping over the input. Keep draft and keyboard behavior.
+
 - Active in PR #43: replace the native Fast / Deep Think dropdown with a dark, green-accented accessible listbox matching the composer. Keep keyboard navigation, touch/pointer selection and the current draft.
 - Active in PR #43: fix the mobile illustration’s brief rectangular matte and delayed animation restart. Render the original illustration with a transparent SVG filter output; animate opacity/position from the initial stylesheet instead of a late scroll observer. Preserve the original figure, welcome layout and reduced-motion preference.
 - Release only after desktop/mobile visual checks and the required CI; no backend or inference changes are included.
