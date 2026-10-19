@@ -5,7 +5,7 @@ const modes=['Fast','Deep Think'] as const;
 
 export function AnswerMode({reasoned,onChange,disabled=false}:{reasoned:boolean;onChange:(value:boolean)=>void;disabled?:boolean}){
   const [open,setOpen]=useState(false),[active,setActive]=useState(reasoned?1:0);
-  const root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement>(null),listId=useId();
+  const root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement>(null),menu=useRef<HTMLUListElement>(null),listId=useId();
   const selected=reasoned?1:0;
   useEffect(()=>{
     if(!open)return;
@@ -13,6 +13,8 @@ export function AnswerMode({reasoned,onChange,disabled=false}:{reasoned:boolean;
     document.addEventListener('pointerdown',outside);
     return()=>document.removeEventListener('pointerdown',outside);
   },[open]);
+  // Keep the downward-opening choices reachable on short mobile viewports.
+  useEffect(()=>{if(open)menu.current?.scrollIntoView({block:'nearest',inline:'nearest'})},[open]);
   useEffect(()=>{if(disabled)setOpen(false)},[disabled]);
   function choose(index:number){onChange(index===1);setOpen(false);trigger.current?.focus({preventScroll:true})}
   function keyDown(event:KeyboardEvent<HTMLButtonElement>){
@@ -31,7 +33,7 @@ export function AnswerMode({reasoned,onChange,disabled=false}:{reasoned:boolean;
       onKeyDown={keyDown} onClick={()=>{setActive(selected);setOpen(!open)}}>
       <span>{modes[selected]}</span><ChevronDown size={13} aria-hidden="true"/>
     </button>
-    {open&&<ul className="mode-menu" role="listbox" aria-label="Answer mode" id={listId}>
+    {open&&<ul ref={menu} className="mode-menu" role="listbox" aria-label="Answer mode" id={listId}>
       {modes.map((mode,index)=><li key={mode} id={`${listId}-${index}`} role="option" aria-selected={selected===index} data-active={active===index}
         onPointerEnter={()=>setActive(index)} onMouseDown={event=>event.preventDefault()} onClick={()=>choose(index)}>
         <span>{mode}</span><span className="mode-check" aria-hidden="true">{selected===index&&<Check size={14}/>}</span>

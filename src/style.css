@@ -37,11 +37,13 @@
 .mode-trigger[aria-expanded=true]>svg{transform:rotate(180deg)}
 .mode-trigger:not(:disabled):hover,.mode-trigger[aria-expanded=true]{background:#ffffff08;color:var(--ink)}
 .mode-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.mode-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:30;min-width:170px;margin:0;padding:5px;list-style:none;border:1px solid #465044;border-radius:10px;background:#1a201c;color:var(--ink);box-shadow:0 12px 36px #0007}
+.mode-menu{position:absolute;left:0;top:calc(100% + 16px);scroll-margin:8px;z-index:30;min-width:170px;margin:0;padding:5px;list-style:none;border:1px solid #465044;border-radius:10px;background:#1a201c;color:var(--ink);box-shadow:0 12px 36px #0007}
 .mode-menu>li{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:40px;padding:9px 11px;border-radius:5px;font-size:13px;line-height:1.4;cursor:pointer;user-select:none}
 .mode-menu>li[aria-selected=true]{color:var(--accent)}
 .mode-menu>li[data-active=true]{background:#c5ef9114}
 .mode-check{display:flex;align-items:center;width:14px;flex:none}
+/* Make room below the pinned chat composer instead of flipping over the input. */
+.in-chat .composer-zone:has(.mode-picker[data-open=true]) .under-composer{padding-top:116px}
 .composer-bottom .send{flex:none;width:40px;height:40px}
 @media(max-width:700px){.composer textarea{min-height:62px;padding:18px 18px 0}.in-chat .composer textarea{min-height:52px}.composer-bottom{padding-left:12px}}
 
