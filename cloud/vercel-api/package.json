@@ -1,0 +1,7 @@
+{
+  "name": "offscript-vercel-api",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "dependencies": { "hono": "4.13.13" }
+}

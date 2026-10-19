@@ -1,0 +1,129 @@
+name: Database isolation
+on:
+  pull_request:
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+  push:
+    branches: [main]
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: database-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cli-release:
+    name: Official CLI migration release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_DB: offscript_test
+          POSTGRES_PASSWORD: disposable-test-only
+        options: >-
+          --label offscript.testing=1
+          --cpus=1 --memory=512m --memory-swap=512m --pids-limit=64
+          --health-cmd="pg_isready -U postgres -d offscript_test"
+          --health-interval=5s --health-timeout=3s --health-retries=10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Prepare pinned vendor CLI and fixture dependencies
+        run: |
+          npm ci --ignore-scripts --prefix cloud/vercel-gateway
+          docker pull node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+          curl --fail --location --proto '=https' --tlsv1.2 --max-time 60 \
+            https://github.com/supabase/cli/releases/download/v2.121.0/supabase_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/supabase-cli.tar.gz"
+          printf '%s  %s\n' '4b481189efbdc57cf2d37bdee5f1a0d29574314398564b32a6dfb76c0fcf275f' "$RUNNER_TEMP/supabase-cli.tar.gz" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/offscript-supabase-cli"
+          tar -xzf "$RUNNER_TEMP/supabase-cli.tar.gz" -C "$RUNNER_TEMP/offscript-supabase-cli" supabase
+          chmod 755 "$RUNNER_TEMP/offscript-supabase-cli"
+          chmod 555 "$RUNNER_TEMP/offscript-supabase-cli/supabase"
+      - name: Restrict disposable PostgreSQL to isolated loopback
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          for fixture_network in $(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$FIXTURE_ID"); do
+            docker network disconnect "$fixture_network" "$FIXTURE_ID"
+          done
+      - name: Exercise official repair, dry-run, migration and atomic provisioning
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          fixture_client='offscript-cli-release'
+          trap 'docker rm -f "$fixture_client" >/dev/null 2>&1 || true' EXIT
+          timeout 120s docker run --name "$fixture_client" \
+            --network "container:$FIXTURE_ID" --read-only --user 1000:1000 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --cpus .5 --memory 512m --memory-swap 512m --pids-limit 64 \
+            --ulimit core=0 --ulimit fsize=8388608 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=67108864 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/app,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/offscript-supabase-cli,dst=/vendor,readonly" \
+            --entrypoint /usr/bin/env \
+            node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+            -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
+            NODE_OPTIONS=--max-old-space-size=128 OFFSCRIPT_TEST_FIXTURE=disposable-postgres \
+            node /app/scripts/test-cli-release.mjs
+  postgres:
+    name: RLS and atomic admission
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        migration: [superuser, managed-project]
+    services:
+      postgres:
+        image: postgres@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_DB: offscript_test
+          POSTGRES_PASSWORD: disposable-test-only
+        options: >-
+          --label offscript.testing=1
+          --cpus=1 --memory=512m --memory-swap=512m --pids-limit=64
+          --health-cmd="pg_isready -U postgres -d offscript_test"
+          --health-interval=5s --health-timeout=3s --health-retries=10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Prepare pinned fixture dependencies
+        run: |
+          npm ci --ignore-scripts --prefix cloud/vercel-gateway
+          docker pull node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+      - name: Restrict disposable PostgreSQL to isolated loopback
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          for fixture_network in $(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$FIXTURE_ID"); do
+            docker network disconnect "$fixture_network" "$FIXTURE_ID"
+          done
+      - run: python3 scripts/test_database.py --container '${{ job.services.postgres.id }}' ${{ matrix.migration == 'managed-project' && '--provider-role' || '' }}
+      - name: Exercise client, binding, cleanup and retention with real SQL
+        env:
+          FIXTURE_ID: ${{ job.services.postgres.id }}
+        run: |
+          fixture_client='offscript-answer-stack-${{ matrix.migration }}'
+          trap 'docker rm -f "$fixture_client" >/dev/null 2>&1 || true' EXIT
+          timeout 90s docker run --name "$fixture_client" \
+            --network "container:$FIXTURE_ID" --read-only --user 1000:1000 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --cpus .5 --memory 512m --memory-swap 512m --pids-limit 64 \
+            --ulimit core=0 --ulimit fsize=8388608 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16777216 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/app,readonly" \
+            --entrypoint /usr/bin/env \
+            node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+            -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
+            NODE_OPTIONS=--max-old-space-size=128 OFFSCRIPT_TEST_FIXTURE=disposable-postgres \
+            node --input-type=module --eval "await import('/app/scripts/test-answer-stack.mjs'); await import('/app/scripts/test-metadata-retention.mjs');"

@@ -3,53 +3,55 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {once} from 'node:events';
+import {timingSafeEqual} from 'node:crypto';
 import {readEvents} from '../src/stream.ts';
+import {createLlamaEngine} from './llama-engine.mjs';
+import {RequestError,validateRequest} from './request.mjs';
+import {createRequestRegistry} from './request-registry.mjs';
+export {validateRequest} from './request.mjs';
 
 const root=resolve(fileURLToPath(new URL('../dist/',import.meta.url)));
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.woff2':'font/woff2','.xml':'application/xml','.txt':'text/plain'};
-class RequestError extends Error{constructor(status,message){super(message);this.status=status}}
-export function validateRequest(value){
-  if(!value||typeof value!=='object'||!Array.isArray(value.messages)||!value.messages.length)throw new RequestError(400,'Send a message first.');
-  if(![256,512,1024].includes(value.maxTokens)||typeof value.reasoned!=='boolean')throw new RequestError(400,'Invalid reply settings.');
-  const messages=value.messages.map((m,i)=>{
-    if(!m||m.role!==(i%2?'assistant':'user')||typeof m.content!=='string'||!m.content.trim())throw new RequestError(400,'Invalid conversation. Clear the chat and try again.');
-    return {role:m.role,content:m.content.trim()};
-  });
-  if(messages.length%2===0)throw new RequestError(400,'The last message must be a question.');
-  return {messages,maxTokens:value.maxTokens,reasoned:value.reasoned};
-}
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.xml':'application/xml','.txt':'text/plain'};
 async function bodyJSON(req){
-  if(!String(req.headers['content-type']).startsWith('application/json'))throw new RequestError(415,'Send JSON.');
+  const mediaType=String(req.headers['content-type']||'').split(';',1)[0].trim().toLowerCase();
+  if(mediaType!=='application/json')throw new RequestError(415,'Send JSON.');
   let size=0;const parts=[];
   for await(const chunk of req){size+=chunk.length;if(size>65536)throw new RequestError(413,'This message is too large. Please shorten it.');parts.push(chunk)}
   try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{throw new RequestError(400,'Invalid message data.')}
 }
 export function createGateway(options={}){
-  const inference=new URL(options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081');
-  if(!['127.0.0.1','localhost','[::1]'].includes(inference.hostname))throw Error('LLAMA_URL must be loopback. Expose only the gateway through HTTPS.');
+  const accessToken=options.accessToken??process.env.GATEWAY_ACCESS_TOKEN;
+  if(accessToken&&!/^[\w-]{32,256}$/.test(accessToken))throw Error('GATEWAY_ACCESS_TOKEN must be a 32–256 character service credential.');
+  const fetchImpl=options.fetchImpl||fetch;
+  const engine=options.engine||createLlamaEngine({origin:options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081',fetchImpl});
   const port=process.env.PORT||'8080';
   const apiOrigin=options.apiOrigin||process.env.PUBLIC_API_ORIGIN;
   if(apiOrigin){const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('PUBLIC_API_ORIGIN must be an exact HTTPS origin.');}
   const origins=new Set(options.origins||[process.env.PUBLIC_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site',...(apiOrigin?[apiOrigin]:[]),`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
-  const queueLimit=options.queueLimit??32,queueTimeout=options.queueTimeout??300000,generationTimeout=options.generationTimeout??300000;
-  const fetchImpl=options.fetchImpl||fetch;let active=false,healthy=true;const waiting=[];
-  async function acquire(signal){
+  const queueLimit=options.queueLimit??1,queueTimeout=options.queueTimeout??10000,generationTimeout=options.generationTimeout??300000;
+  const queueBusy=()=>Object.assign(new RequestError(503,'The model is busy. Please try again in a moment.'),{code:'model_busy'});
+  const registry=createRequestRegistry();
+  let active=false,healthy=true;const waiting=[];
+  async function acquire(signal,continuation=false){
     if(signal.aborted)throw new RequestError(499,'Request cancelled.');
     if(!active){active=true;return}
-    if(waiting.length>=queueLimit)throw new RequestError(503,'The server is busy. Please try again shortly.');
+    // Bound new-question waiting without shortening an answer already in progress.
+    if(waiting.length>=(continuation?32:queueLimit))throw queueBusy();
     await new Promise((accept,reject)=>{
       let timer;const entry={grant(){cleanup();accept()}};
       function cleanup(){clearTimeout(timer);signal.removeEventListener('abort',cancel);const i=waiting.indexOf(entry);if(i>=0)waiting.splice(i,1)}
       function cancel(){cleanup();reject(new RequestError(499,'Request cancelled.'))}
       signal.addEventListener('abort',cancel,{once:true});
-      timer=setTimeout(()=>{cleanup();reject(new RequestError(503,'The server queue is taking too long. Please try again later.'))},queueTimeout);
+      timer=setTimeout(()=>{cleanup();reject(queueBusy())},continuation?300000:queueTimeout);
       waiting.push(entry);
     });
   }
   function release(){const next=waiting.shift();if(next)next.grant();else active=false}
   async function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});res.end(JSON.stringify(data))}
   const server=http.createServer(async(req,res)=>{
-    let acquired=false,ctrl;res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
+    let acquired=false,ctrl,receipt,deadlineTimer,abort,workerStopped=true,started=false,completedSuccessfully=false;
+    const control = outcome => ({...(receipt?{requestId:receipt.requestId,workerId:receipt.workerId}:{}),workerStopped,outcome});
+    res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
     if(origin){
       if(!origins.has(origin))return void await json(res,403,{error:'This website is not allowed to use this server.'});
@@ -58,55 +60,75 @@ export function createGateway(options={}){
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Offscript-Client','Access-Control-Max-Age':'600'});return res.end()}
     try{
       const path=new URL(req.url,'http://localhost').pathname;
+      if(path.startsWith('/api/')&&path!=='/api/health'&&accessToken){
+        const actual=Buffer.from(String(req.headers.authorization||''));
+        const expected=Buffer.from(`Bearer ${accessToken}`);
+        if(actual.length!==expected.length||!timingSafeEqual(actual,expected))throw new RequestError(401,'Service authentication is required.');
+      }
       if(path.startsWith('/api/')||path==='/config.json')res.setHeader('X-Robots-Tag','noindex, nofollow');
       if(path==='/api/health'&&req.method==='GET'){
-        let ready=false;try{const result=await fetchImpl(new URL('/health',inference),{signal:AbortSignal.timeout(3000)});ready=healthy&&result.ok}catch{}
-        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active});
+        const ready=healthy&&await engine.ready();
+        return void await json(res,ready?200:503,{ready,queued:waiting.length,busy:active,protocol:5,workerId:registry.workerId,modes:['fast','deep']});
+      }
+      if(path==='/api/cancel'&&req.method==='POST'){
+        if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+        return void await json(res,200,{control:await registry.cancel(await bodyJSON(req))});
+      }
+      if(path==='/api/prepare'&&req.method==='POST'){
+        if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+        return void await json(res,200,registry.prepare(await bodyJSON(req)));
       }
       if(path==='/api/chat'&&req.method==='POST'){
+        res.setHeader('X-Offscript-Protocol','5');
         if(req.headers['x-offscript-client']!=='web')throw new RequestError(403,'Invalid client.');
-        const input=validateRequest(await bodyJSON(req));
-        ctrl=new AbortController();const abort=()=>ctrl.abort();res.once('close',abort);
-        await acquire(ctrl.signal);acquired=true;
+        if(req.headers['x-offscript-request-id']!==undefined){
+          if(!accessToken)throw new RequestError(503,'Service authentication is required.');
+          if(req.headers['x-offscript-prepared']!==undefined && req.headers['x-offscript-prepared']!=='true')throw new RequestError(400,'Invalid prepared request.');
+          receipt=registry[req.headers['x-offscript-prepared']==='true'?'claim':'register'](req.headers['x-offscript-request-id'],req.headers['x-offscript-worker-id'],req.headers['x-offscript-request-deadline']);
+        }
+        ctrl=receipt?.controller||new AbortController();abort=()=>ctrl.abort();res.once('close',abort);
+        if(receipt)deadlineTimer=setTimeout(()=>ctrl.abort(),Math.max(0,receipt.expiresAt-Date.now()));
+        // Only the credential-authenticated admission bridge can clamp a final
+        // continuation below the public preset sizes.
+        const input=validateRequest(await bodyJSON(req),{allowBoundedTokens:Boolean(receipt)});
+        await acquire(ctrl.signal,input.continuation);acquired=true;
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // Slot cleanup must work before accepting content. Never expose slot endpoints.
-        const erased=await fetchImpl(new URL('/slots/0?action=erase',inference),{method:'POST',signal:AbortSignal.timeout(5000)});
-        if(!erased.ok){healthy=false;throw new RequestError(503,'The model server is not ready. Please try again later.')}
+        workerStopped=false;
+        if(!await engine.dispose()){healthy=false;throw new RequestError(503,'The model server is not ready. Please try again later.')}
+        workerStopped=true;
         if(options.thermalCheck&&await options.thermalCheck())throw new RequestError(503,'The laptop is cooling down. Try again in a moment.');
         const timeout=setTimeout(()=>ctrl.abort(new Error('The response took too long. Try Direct mode or a shorter reply.')),generationTimeout);
         const thermalTimer=options.thermalCheck?setInterval(async()=>{if(await options.thermalCheck())ctrl.abort(new Error('The laptop is cooling down. Try again in a moment.'))},1000):null;
+        let completed=false;
         try{
-          // Apply the real embedded chat template and count actual tokens; no silent truncation.
-          const templated=await fetchImpl(new URL('/apply-template',inference),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:input.messages,chat_template_kwargs:{enable_thinking:input.reasoned}}),signal:ctrl.signal});
-          if(!templated.ok)throw new RequestError(502,'Could not prepare this conversation.');
-          const {prompt}=await templated.json();
-          const tokenized=await fetchImpl(new URL('/tokenize',inference),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:prompt,add_special:true}),signal:ctrl.signal});
-          if(!tokenized.ok)throw new RequestError(502,'Could not check the conversation length.');
-          const {tokens}=await tokenized.json();
-          // Leave extra generation room for reasoning; both thinking and answer count toward this budget.
-          const outputBudget=input.maxTokens+(input.reasoned?1024:0);
-          if(!Array.isArray(tokens)||tokens.length+outputBudget>4096)throw new RequestError(422,'This conversation exceeds the laptop’s memory budget. Choose a shorter reply or clear the chat. Nothing was silently removed.');
-          const response=await fetchImpl(new URL('/v1/chat/completions',inference),{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({model:'offscript',messages:input.messages,stream:true,stream_options:{include_usage:true},max_tokens:outputBudget,temperature:input.reasoned?0.6:0.7,top_p:input.reasoned?0.95:0.8,top_k:20,min_p:0,chat_template_kwargs:{enable_thinking:input.reasoned},cache_prompt:false,id_slot:0})});
-          if(!response.ok||!response.body)throw new RequestError(502,'The model could not answer. Please try again.');
+          const prepared=await engine.prepare(input,ctrl.signal);
+          if(ctrl.signal.aborted)throw new RequestError(499,'Request cancelled.');
+          started=true;workerStopped=false;
+          const response=await engine.generate(prepared,ctrl.signal);
           res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no'});
           // Avoid forwarding inference diagnostics or prompt echoes to the public client.
           for await(const data of readEvents(response.body)){
             if(res.destroyed)break;
-            if(data==='[DONE]'){res.write('data: [DONE]\n\n');break}
+            if(data==='[DONE]'){completed=true;break}
             const event=JSON.parse(data);const choice=event.choices?.[0];
             if(event.error)throw Error('The model stopped unexpectedly.');
             if(choice){const delta={};if(typeof choice.delta?.content==='string')delta.content=choice.delta.content;if(choice.delta?.reasoning_content)delta.reasoning_content='thinking';
-              if(!res.write(`data: ${JSON.stringify({choices:[{delta,finish_reason:choice.finish_reason||null}],usage:event.usage})}\n\n`))await Promise.race([once(res,'drain'),once(res,'close')]);
+              if(!res.write(`data: ${JSON.stringify({choices:[{delta,finish_reason:choice.finish_reason||null}],usage:event.usage})}\n\n`))await once(res,'drain',{signal:ctrl.signal});
             }else if(event.usage)res.write(`data: ${JSON.stringify({usage:event.usage})}\n\n`);
           }
-          res.end();
+          if(!completed&&!res.destroyed)throw new RequestError(502,'The model stream ended before completion. Please try again.');
         }finally{
           clearTimeout(timeout);if(thermalTimer)clearInterval(thermalTimer);ctrl.abort();
           // Do not reuse a slot unless the old request's cache has been erased successfully.
-          let cleared=false;for(let attempt=0;attempt<3&&!cleared;attempt++){try{const r=await fetchImpl(new URL('/slots/0?action=erase',inference),{method:'POST',signal:AbortSignal.timeout(5000)});cleared=r.ok}catch{}}
+          const cleared=await engine.dispose();
+          workerStopped=cleared;
           if(!cleared)healthy=false;
-          res.removeListener('close',abort);
         }
+        if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
+        // DONE means the request's model state has actually been cleared.
+        completedSuccessfully=completed;
+        if(!res.destroyed)res.end(`data: ${JSON.stringify({control:control('completed')})}\n\ndata: [DONE]\n\n`);
         return;
       }
       if(path==='/config.json'&&req.method==='GET'){
@@ -126,9 +148,14 @@ export function createGateway(options={}){
       res.end(req.method==='HEAD'?undefined:await readFile(selected));
     }catch(error){
       if(res.destroyed)return;
-      const message=ctrl?.signal.reason instanceof Error?ctrl.signal.reason.message:error.status?error.message:'The model connection failed. Please try again.';
-      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message})}\n\n`)}else await json(res,error.status||503,{error:message});
-    }finally{if(acquired)release()}
+      const message=error.status?error.message:ctrl?.signal.reason instanceof Error&&ctrl.signal.reason.name!=='AbortError'?ctrl.signal.reason.message:'The model connection failed. Please try again.';
+      const proof=control(started?'failed':'rejected');
+      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control:proof})}\n\n`)}else await json(res,error.status||503,{error:message,...(error.code==='model_busy'?{code:'model_busy'}:{}),control:proof});
+    }finally{
+      clearTimeout(deadlineTimer);if(abort)res.removeListener('close',abort);
+      if(acquired)release();
+      receipt?.finish(workerStopped,completedSuccessfully?'completed':started?'cancelled':'rejected');
+    }
   });
   server.requestTimeout=15000;server.headersTimeout=10000;server.keepAliveTimeout=5000;
   return server;

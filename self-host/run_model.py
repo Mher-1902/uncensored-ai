@@ -7,6 +7,8 @@ from readiness import temperatures
 
 def main():
     readiness()
+    if os.environ.get('OFFSCRIPT_REQUIRE_THERMALS') == '1' and not temperatures():
+        raise SystemExit('Thermal sensors are required for this unattended container profile.')
     binary = RUNTIME / 'build/bin/llama-server'
     if not binary.exists() or not MODEL.exists(): raise SystemExit('Run npm run fedora:prepare first.')
     if MODEL.stat().st_size!=CONFIG['bytes'] or digest(MODEL)!=CONFIG['sha256']: raise SystemExit('Model integrity check failed. Refusing to start.')
@@ -32,7 +34,11 @@ def main():
     child = subprocess.Popen(command,env=env)
     def watch():
         while child.poll() is None:
-            if any(t['celsius'] >= 85 for t in temperatures()):
+            sensors = temperatures()
+            if os.environ.get('OFFSCRIPT_REQUIRE_THERMALS') == '1' and not sensors:
+                print('Thermal stop: sensor readings are unavailable.',flush=True)
+                child.terminate();return
+            if any(t['celsius'] >= 85 for t in sensors):
                 print('Thermal stop: laptop reached 85°C. Let it cool and inspect the fan before restarting.',flush=True)
                 child.terminate();return
             time.sleep(2)

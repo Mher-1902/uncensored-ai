@@ -2,7 +2,9 @@
 
 The actual Samsung inspected over SSH on October 4, 2026 reports an Intel i7-3517U, two physical cores, four logical threads, 7,554 MiB RAM and Fedora 42. AVX and F16C are supported; AVX2, FMA and BMI2 are not. The public website is hosted separately and stays available while the laptop is off. Replies require the Fedora laptop to remain awake, connected and cool. Model compilation and verification are separate from a successful inference test.
 
-The selected model is **Huihui Qwen3 1.7B abliterated v2, importance-matrix Q4_K_M**, 1,107,405,664 bytes. Its source revision, SHA-256 and llama.cpp revision are locked in `self-host/model.json`. This is a practical memory/quality compromise, not a proved best model. The requested lukey03 9B Q4 weighs 5,627,044,704 bytes; it exceeded the originally reported 4 GB RAM. Although inspection found more physical RAM, the old CPU, heat and occupied desktop memory still favor the user-approved smaller model.
+The selected model is **HauhauCS Qwen3.5 2B Aggressive, Q4_K_M**, 1,270,808,032 bytes. Its source revision, SHA-256, official Qwen3.5 template and llama.cpp revision are locked in `self-host/model.json`. See [the current profile and measured smoke checks](MODEL-PROFILE.md). This remains CPU-only inference on the Samsung; vLLM's documented x86 CPU requirements exclude its AVX-only processor.
+
+The hardware description above and the native-service/tunnel examples below record the original October 4 setup. The current server runs Fedora 44 with rootless Docker and a credential-protected gateway; use [Docker deployment](DOCKER.md) and [Vercel hosting](VERCEL.md) for current operations.
 
 ## Prepare on Fedora
 
@@ -40,9 +42,9 @@ curl http://127.0.0.1:8080/api/health
 npm run benchmark
 ```
 
-The model listens only on `127.0.0.1:8081`. The gateway listens on `127.0.0.1:8080`. Only expose the gateway. The default profile uses two CPU threads, one slot, a 4,096-token total context, 128-token logical prefill batches and 64-token microbatches. It keeps F16 KV precision and a pinned official Qwen chat template; the GGUF's simplified template lacked the thinking switch and failed the first real Direct-mode test. See `self-host/TEMPLATE-NOTICE.md` for provenance and license. It does not distill, prune layers or silently cut off old turns. Exact token counting reserves space for generation, including extra room for thinking. Too-long conversations receive a clear error.
+The model listens only on `127.0.0.1:8081`. The gateway listens on `127.0.0.1:8080`. Only expose the gateway. The default profile uses two CPU threads, one slot, a 4,096-token total context, 128-token logical prefill batches and 64-token microbatches. It keeps F16 KV precision and a pinned official Qwen chat template; the explicit template keeps Direct/Reasoned behavior pinned and independently verified. See `self-host/TEMPLATE-NOTICE.md` for provenance and license. It does not distill, prune layers or silently cut off old turns. Exact token counting reserves space for generation, including extra room for thinking. Too-long conversations receive a clear error.
 
-Reasoned mode remains the default. Direct mode uses Qwen's documented thinking switch, with its own recommended sampler. It is an explicit quality/latency tradeoff. Reply-length controls bound output; an exhausted output budget is reported. Generating many thinking tokens on two old cores can still take a long time.
+Direct mode is the current UI default. Direct mode uses Qwen's documented thinking switch, with its own recommended sampler. It is an explicit quality/latency tradeoff. Reply-length controls bound output; an exhausted output budget is reported. Generating many thinking tokens on two old cores can still take a long time.
 
 Temperature polling stops the model at 85°C; there is no automatic hot restart. The gateway also checks CPU temperature during requests. This conservative threshold depends on working sensors and is not a cooling guarantee. No power-management settings, firmware limits or protections are disabled.
 

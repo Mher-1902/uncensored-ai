@@ -66,7 +66,7 @@ def prepare():
     if shutil.disk_usage(MODEL.parent).free < 3*1024**3: raise SystemExit('Keep at least 3 GiB free for the verified download.')
     partial = MODEL.with_suffix('.gguf.partial')
     url = f'https://huggingface.co/{CONFIG["repository"]}/resolve/{CONFIG["revision"]}/{CONFIG["filename"]}?download=true'
-    print('Downloading the pinned 1.11 GB model. No chat data is downloaded or saved.')
+    print(f"Downloading the pinned {CONFIG['bytes']:,}-byte model. No chat data is downloaded or saved.")
     try:
         with urllib.request.urlopen(url, timeout=60) as source, partial.open('wb') as target:
             shutil.copyfileobj(source,target,length=4*1024*1024)

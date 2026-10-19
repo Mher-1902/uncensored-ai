@@ -1,20 +1,20 @@
 {
-  "name": "Huihui Qwen3 1.7B v2 \u00b7 abliterated",
-  "baseModel": "huihui-ai/Huihui-Qwen3-1.7B-abliterated-v2",
-  "repository": "mradermacher/Huihui-Qwen3-1.7B-abliterated-v2-i1-GGUF",
-  "revision": "aff5de9e25c8ab0d4dcf7da82aca0adbdac3ae98",
-  "filename": "Huihui-Qwen3-1.7B-abliterated-v2.i1-Q4_K_M.gguf",
-  "bytes": 1107405664,
-  "sha256": "578d94267903dc808e476ba8f94f65e5cd8cca29d9a1110b65407d76c56689ac",
+  "name": "HauhauCS Qwen3.5 2B \u00b7 Aggressive",
+  "baseModel": "HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive",
+  "repository": "HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive",
+  "revision": "2bcf35c1ebf62c837c12c1aa90b578ff4717e831",
+  "filename": "Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+  "bytes": 1270808032,
+  "sha256": "be3ccca13a9d1bc8b67165ea80bd103cd6151a37ad131183cc7ca388f78d9517",
   "llamaRevision": "0504396140d1c882f5f6ee34466a42db7ae90114",
   "context": 4096,
   "threads": 2,
   "minimumAvailableMiB": 2150,
   "minimumTotalMiB": 3500,
   "template": {
-    "repository": "Qwen/Qwen3-1.7B",
-    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
-    "filename": "qwen3.jinja",
-    "sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8"
+    "repository": "Qwen/Qwen3.5-2B",
+    "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+    "filename": "qwen35.jinja",
+    "sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80"
   }
 }

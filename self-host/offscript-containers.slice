@@ -1,0 +1,5 @@
+[Unit]
+Description=Offscript application containers with no swap
+
+[Slice]
+MemorySwapMax=0

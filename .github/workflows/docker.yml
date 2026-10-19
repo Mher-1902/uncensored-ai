@@ -1,0 +1,41 @@
+name: Docker
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  containers:
+    name: Container build and runtime checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker compose config --quiet
+      - name: Exercise builds from private source permissions
+        run: chmod -R go-rwx server src/stream.ts self-host/thermal.mjs docker/Caddyfile
+      - name: Validate the pinned ingress configuration
+        run: |
+          docker build -f docker/ingress.Dockerfile -t offscript-ingress:ci .
+          docker run --rm --network=none --read-only --user 65532:65532 --cap-drop=ALL --security-opt=no-new-privileges \
+            offscript-ingress:ci \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - run: docker build -f docker/gateway.Dockerfile -t offscript-gateway:ci .
+      - name: Test the actual non-root, read-only gateway image
+        run: |
+          docker run --rm --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+            --memory=256m --memory-swap=256m --pids-limit=64 --ulimit core=0 \
+            --mount "type=bind,src=$PWD/tests/gateway.test.mjs,dst=/app/tests/gateway.test.mjs,readonly" \
+            offscript-gateway:ci node --test tests/gateway.test.mjs
+      - run: docker build -f docker/model.Dockerfile -t offscript-model:ci .
+      - name: Check the pinned CPU binary and shared libraries
+        run: |
+          docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+            offscript-model:ci /app/.runtime/llama.cpp/build/bin/llama-server --version

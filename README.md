@@ -1,6 +1,21 @@
 # Offscript — project handoff
 
-Offscript is an ephemeral AI chat website with the supplied anonymous figure/logo, a charcoal-and-lime visual theme, expressive typography, streaming replies, a custom 404 page and search-engine metadata. Conversations stay in the current browser page and request memory; there is no account system, chat database, saved conversation history or analytics.
+**Active implementation (October 19, 2026):** follow the [server-powered pilot](docs/PILOT.md) and [account control/answer admission](docs/ACCOUNT-CONTROL.md). Fast and Deep Think are the first modes. Visitors do not download models. The workspace preserves the original anonymous figure, charcoal/lime layout and welcome motion. Model replies use bright terminal green (`#00FF00`) and classic Courier monospace. Production source `25c605d` adds explicit interrupted-answer recovery and preserves a next draft through Stop/Retry. The integrated protocol-5/account release is still a candidate; account enforcement and legal publication remain off.
+
+Migrations 001/002 and the restricted NOLOGIN runtime were installed and verified separately; see the [database release record](docs/DATABASE-RELEASES.md). This source preserves those exact SQL files and the approved 1.0 CPU Compose profile. A source integration does not activate runtime credentials, final policies, eligibility or billing, improve model quality, or certify 50,000-user capacity.
+
+Track active requirements and incoming additions in [the product worklist](docs/PRODUCT-WORKLIST.md).
+**Current model profile (October 16, 2026):** [HauhauCS Qwen3.5 2B Aggressive, Q4_K_M](docs/MODEL-PROFILE.md). The frontend uses `https://offscript-ai.vercel.app/`, Supabase GitHub sign-in, and the protected Samsung Docker backend. The October 4 handoff below is historical; use the current profile and delivery documents for new work.
+
+For ongoing changes, use the [reviewed delivery workflow](docs/DELIVERY.md), [security requirements](SECURITY.md) and [infrastructure roadmap](docs/ROADMAP.md). The handoff below records the earlier machine state; current deployments require fresh validation.
+
+The [Docker backend](docs/DOCKER.md) runs on the Samsung independently of the Mac. Docker Desktop is optional tooling; server development and serving stay on the Samsung.
+
+The [scaling decisions](docs/SCALING.md) record the selected managed Supabase/PostgreSQL direction and researched tools for accounts, RLS, testing, security, monitoring and future GPU workers.
+
+The confirmed [Vercel services layout](docs/VERCEL.md) hosts the live website and an internal authenticated API bridge. Text inference remains in Samsung Docker; image generation is reserved for future separate GPU infrastructure. No external GPU service is connected.
+
+Offscript is an ephemeral AI chat website with the supplied anonymous figure/logo, a charcoal-and-lime visual theme, expressive typography, streaming replies, a custom 404 page and search-engine metadata. Conversations stay in the current browser page and request memory; there is no chat database, saved conversation history or analytics. Public registration and login use Supabase Auth; see the [account setup](docs/ACCOUNTS.md) for required hosting/provider configuration.
 
 **Handoff checkpoint: October 4, 2026.** The owner asked us to stop development, document the work and push everything to GitHub before retiring the development Mac. This README is the starting point for the next laptop or Codex session. Do not assume the public frontend has already received the latest model connection.
 
