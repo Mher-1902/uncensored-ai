@@ -1,5 +1,5 @@
 import { lazy, Suspense, startTransition, useEffect, useEffectEvent, useRef, useState } from 'react';
-import { ArrowUp, Check, Copy, ChevronDown, RotateCcw, Square, X } from 'lucide-react';
+import { ArrowUp, Check, Copy, RotateCcw, Square, X } from 'lucide-react';
 const Reply=lazy(()=>import('./Reply'));
 import {loadConfig,reply,type Message,type SiteConfig} from './api';
 import {AccountDialog,useAccount} from './account';
@@ -7,6 +7,7 @@ import {useOffscriptMotion} from './useOffscriptMotion';
 import {PilotDialog,usePilotControls} from './pilot-controls';
 import {canUsePilot} from './pilot-api';
 import {completedHistory,restoreQuestion,retryTurn,settleAnswer} from './conversation';
+import {AnswerMode} from './AnswerMode';
 
 function CopyReply({text}:{text:string}){
   const [label,setLabel]=useState('Copy reply');
@@ -76,10 +77,7 @@ export function App(){
           <textarea id="composer" ref={input} placeholder="What's on your mind?" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
           <div className="composer-bottom">
             <div className="send-options">
-              <label className={`select-control mode-control${reasoned?" is-deep":""}`}>
-                <select aria-label="Answer mode" value={reasoned?'reasoned':'direct'} onChange={e=>setReasoned(e.target.value==='reasoned')} disabled={Boolean(config?.space&&!config.apiBase)}><option value="direct">Fast</option><option value="reasoned">Deep Think</option></select>
-                <ChevronDown size={13} aria-hidden="true"/>
-              </label>
+              <AnswerMode reasoned={reasoned} onChange={setReasoned} disabled={Boolean(config?.space&&!config.apiBase)}/>
             </div>
             {busy?<button key="stop" type="button" className="send" onClick={stop} aria-label="Stop response"><Square size={18} fill="currentColor"/></button>:<button key="send" type="submit" className="send" disabled={!draft.trim()||!config||account.loading} aria-label="Send message"><ArrowUp size={22}/></button>}
           </div>
