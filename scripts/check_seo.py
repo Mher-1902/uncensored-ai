@@ -70,6 +70,12 @@ require(address.scheme == "https" and address.netloc and address.path == "/"
         and not address.query and not address.fragment, "canonical must be an absolute HTTPS homepage")
 require("__SITE_ORIGIN__" not in (DIST / "index.html").read_text(), "unresolved canonical placeholder")
 require(home.meta.get("og:url") == canonical, "social and canonical URLs must agree")
+privacy = Page(DIST / "privacy.html")
+require(privacy.language == "en" and len(privacy.h1) == 1 and privacy.h1[0] == "Privacy Policy", "privacy notice needs a complete initial HTML document")
+require(privacy.canonicals == [canonical + "privacy.html"], "privacy notice needs its own canonical URL")
+require("noindex" in privacy.meta.get("robots", ""), "privacy notice must not compete with the product homepage")
+require("__SITE_ORIGIN__" not in (DIST / "privacy.html").read_text(), "unresolved privacy canonical placeholder")
+require((DIST / "privacy.css").is_file(), "privacy notice stylesheet must be published")
 for prefix in ("og", "twitter"):
     require(home.meta.get(f"{prefix}:title") == home.titles[0], f"{prefix} title must match the page")
     require(home.meta.get(f"{prefix}:description") == home.meta["description"], f"{prefix} description must match the page")

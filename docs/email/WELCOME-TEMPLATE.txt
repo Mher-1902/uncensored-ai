@@ -1,0 +1,28 @@
+STATUS: PREPARED ONLY. No sender, hook, queue or automatic email is enabled.
+
+Subject: Welcome to Offscript_
+
+You're in.
+
+Welcome to Offscript_. A little space for your next question.
+
+Your account stays; your conversations don't. Start with Fast for a direct reply, or choose Deep Think when you want the model to spend more time reasoning. Availability is limited, and AI answers can be wrong.
+
+Open Offscript: https://offscript-ai.vercel.app/
+
+Chats stay in the current browser page and clear when you leave, reload or sign out. Copy anything you need before leaving. Temporary chats do not mean anonymous accounts or zero infrastructure-provider logs.
+
+Privacy Policy: https://offscript-ai.vercel.app/privacy.html
+Account or privacy support: sukiasyanmher7@gmail.com
+
+This is a proposed account-service welcome, not a marketing subscription. Signing in does not authorize a future charge.
+
+DELIVERY GATES
+- A domain controlled by the owner; authenticated From address; SPF/DKIM and DMARC checked.
+- Existing free-tier sender/SMTP within an explicit spending cap; never enable automatic paid overage.
+- A trusted server-side new-user event, not an unauthenticated browser endpoint.
+- Durable deduplication by user + message type + template version, bounded retries and bounce/suppression handling.
+- Verified recipient rules and a tested delivery path. Do not resend a welcome on every login or token refresh.
+- No prompt/reply content, tracking pixel, advertising analytics, or automatic marketing opt-in.
+- A separate explicit opt-in and unsubscribe mechanism before promotional messages.
+- Test with dummy recipients or an owner-approved test address before any production activation.

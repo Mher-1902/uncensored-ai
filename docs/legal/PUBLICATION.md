@@ -23,3 +23,7 @@ Primary references checked October 17, 2026:
 - [Armenian law on personal data protection, official ARLIS entry](https://www.arlis.am/en/acts/117034/latest): local-law review starting point; this document does not claim a completed Armenian legal assessment.
 - [European Commission on children's data](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/legal-grounds-processing-data/are-there-any-specific-safeguards-data-about-children_en): safeguards and consent conditions cannot be replaced by an ordinary terms checkbox.
 - [FTC children's privacy guidance](https://www.ftc.gov/business-guidance/privacy-security/childrens-privacy): review applicability before accepting the proposed worldwide/all-age audience.
+
+## October 19 current-processing notice
+
+The signup increment adds `src/Privacy.tsx` and its generated `/privacy.html` to disclose the currently serving product before OAuth. It does not publish the older draft Terms or the staged account-control policy pair, create an acceptance receipt, enable eligibility/admission, activate metadata retention, or claim a complete legal compliance review. It explicitly identifies provider records, countries, temporary-chat limits, absent email delivery and the unavailable verified guardian flow. The final Terms/eligibility, transfer/retention and deletion/recovery work above remains required for the broader account-control launch. Keep `src/policy-documents.ts` empty until the complete versioned agreement release is ready.
