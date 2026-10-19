@@ -127,6 +127,21 @@ test('client disconnect cancels both binding and Samsung requests',async()=>{
   const response=await app(request());const reader=response.body.getReader();await reader.read();await reader.cancel();
   assert.equal(samsungSignal.aborted,true);
 });
+test('busy admission survives both forwarding layers with fixed safe wording',async()=>{
+  const bridge=createBridge({env,verify:async()=>{},fetchImpl:async()=>Response.json({
+    code:'model_busy',error:'private inference diagnostics',control:{workerId:'private-worker'},
+  },{status:503,headers:{'Set-Cookie':'private=value'}})});
+  const app=createAppHandler('/api/chat',{env:{GATEWAY_URL:'https://internal.test'},fetchImpl:(url,options)=>bridge(new Request(url,options))});
+  const response=await app(request());assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{error:'The model is busy. Please try again in a moment.',code:'model_busy'});
+  assert.equal(response.headers.get('set-cookie'),null);assert.equal(response.headers.get('cache-control'),'no-store');
+});
+test('unknown busy codes and wrong-status busy claims remain redacted',async()=>{
+  for(const [status,code] of [[503,'private_busy'],[500,'model_busy']]){
+    const response=await forward(request(),'https://private.test','api/chat',{fetchImpl:async()=>Response.json({code,error:'private inference diagnostics'},{status})});
+    assert.equal(response.status,status===500?502:503);assert.doesNotMatch(await response.text(),/private inference diagnostics|model_busy|private_busy/);
+  }
+});
 test('proxy timeouts abort upstream requests and redact failures and response headers',async()=>{
   const failed=await forward(request(),'https://private.test','api/chat',{timeoutMs:10,fetchImpl:async(_url,options)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(Error('private credential')),{once:true}))});
   assert.equal(failed.status,503);assert.doesNotMatch(await failed.text(),/private credential/);

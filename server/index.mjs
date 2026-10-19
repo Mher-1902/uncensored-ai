@@ -28,19 +28,21 @@ export function createGateway(options={}){
   const apiOrigin=options.apiOrigin||process.env.PUBLIC_API_ORIGIN;
   if(apiOrigin){const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('PUBLIC_API_ORIGIN must be an exact HTTPS origin.');}
   const origins=new Set(options.origins||[process.env.PUBLIC_ORIGIN||'https://offscript-ephemeral.sukiasyanmher7.chatgpt.site',...(apiOrigin?[apiOrigin]:[]),`http://127.0.0.1:${port}`,`http://localhost:${port}`]);
-  const queueLimit=options.queueLimit??32,queueTimeout=options.queueTimeout??300000,generationTimeout=options.generationTimeout??300000;
+  const queueLimit=options.queueLimit??1,queueTimeout=options.queueTimeout??10000,generationTimeout=options.generationTimeout??300000;
+  const queueBusy=()=>Object.assign(new RequestError(503,'The model is busy. Please try again in a moment.'),{code:'model_busy'});
   const registry=createRequestRegistry();
   let active=false,healthy=true;const waiting=[];
-  async function acquire(signal){
+  async function acquire(signal,continuation=false){
     if(signal.aborted)throw new RequestError(499,'Request cancelled.');
     if(!active){active=true;return}
-    if(waiting.length>=queueLimit)throw new RequestError(503,'The server is busy. Please try again shortly.');
+    // Bound new-question waiting without shortening an answer already in progress.
+    if(waiting.length>=(continuation?32:queueLimit))throw queueBusy();
     await new Promise((accept,reject)=>{
       let timer;const entry={grant(){cleanup();accept()}};
       function cleanup(){clearTimeout(timer);signal.removeEventListener('abort',cancel);const i=waiting.indexOf(entry);if(i>=0)waiting.splice(i,1)}
       function cancel(){cleanup();reject(new RequestError(499,'Request cancelled.'))}
       signal.addEventListener('abort',cancel,{once:true});
-      timer=setTimeout(()=>{cleanup();reject(new RequestError(503,'The server queue is taking too long. Please try again later.'))},queueTimeout);
+      timer=setTimeout(()=>{cleanup();reject(queueBusy())},continuation?300000:queueTimeout);
       waiting.push(entry);
     });
   }
@@ -89,7 +91,7 @@ export function createGateway(options={}){
         // Only the credential-authenticated admission bridge can clamp a final
         // continuation below the public preset sizes.
         const input=validateRequest(await bodyJSON(req),{allowBoundedTokens:Boolean(receipt)});
-        await acquire(ctrl.signal);acquired=true;
+        await acquire(ctrl.signal,input.continuation);acquired=true;
         if(!healthy)throw new RequestError(503,'The model needs to restart before another request.');
         // Slot cleanup must work before accepting content. Never expose slot endpoints.
         workerStopped=false;
@@ -148,7 +150,7 @@ export function createGateway(options={}){
       if(res.destroyed)return;
       const message=error.status?error.message:ctrl?.signal.reason instanceof Error&&ctrl.signal.reason.name!=='AbortError'?ctrl.signal.reason.message:'The model connection failed. Please try again.';
       const proof=control(started?'failed':'rejected');
-      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control:proof})}\n\n`)}else await json(res,error.status||503,{error:message,control:proof});
+      if(res.headersSent){res.end(`data: ${JSON.stringify({error:message,control:proof})}\n\n`)}else await json(res,error.status||503,{error:message,...(error.code==='model_busy'?{code:'model_busy'}:{}),control:proof});
     }finally{
       clearTimeout(deadlineTimer);if(abort)res.removeListener('close',abort);
       if(acquired)release();

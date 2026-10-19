@@ -1,4 +1,4 @@
-export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean };
+export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean; state?:'streaming'|'complete'|'stopped'|'interrupted'; questionId?:string; reasoned?:boolean };
 import {readEvents} from './stream.ts';
 export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
 export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null; accountControl?:boolean };
