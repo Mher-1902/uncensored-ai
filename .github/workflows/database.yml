@@ -1,10 +1,10 @@
 name: Database isolation
 on:
   pull_request:
-    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/reply-settings.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
   push:
     branches: [main]
-    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/reply-settings.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
   workflow_dispatch:
 permissions:
   contents: read

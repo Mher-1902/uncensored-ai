@@ -47,6 +47,30 @@ test('a natural stop makes one request even for a short answer',async t=>{
   await reply({apiBase:'https://app.test/api',space:null},message,false,new AbortController().signal,()=>{},()=>{});
   assert.equal(calls,1);
 });
+test('only an explicitly ungated Fast answer requests the larger segment',async t=>{
+  for(const accountControl of [undefined,false,true])await t.test(`accountControl=${accountControl}`,async t=>{
+    location(t);const bodies=[];
+    t.mock.method(globalThis,'fetch',async(_url,options)=>{
+      bodies.push(JSON.parse(options.body));
+      return accountControl?admittedEvent('Done','stop'):event('Done','stop');
+    });
+    await reply({apiBase:'https://app.test/api',space:null,accountControl},message,false,new AbortController().signal,()=>{},()=>{},'dummy-session');
+    assert.equal(bodies[0].maxTokens,accountControl===false?512:256);
+    assert.equal(bodies[0].mode,'fast');assert.equal(bodies[0].reasoned,false);
+  });
+});
+test('ungated answers preserve the first mode and use larger Fast continuations',async t=>{
+  for(const reasoned of [false,true])await t.test(`reasoned=${reasoned}`,async t=>{
+    const bodies=[];
+    t.mock.method(globalThis,'fetch',async(_url,options)=>{
+      bodies.push(JSON.parse(options.body));
+      return bodies.length===1?event('Existing answer  ','length'):event('finished.','stop');
+    });
+    await reply({apiBase:'https://app.test/api',space:null,accountControl:false},message,reasoned,new AbortController().signal,()=>{},()=>{});
+    assert.deepEqual(bodies.map(({maxTokens,mode})=>({maxTokens,mode})),[{maxTokens:reasoned?256:512,mode:reasoned?'deep':'fast'},{maxTokens:512,mode:'fast'}]);
+    assert.equal(bodies[1].messages[1].content,'Existing answer  ');assert.equal(bodies[1].continuation,true);
+  });
+});
 test('a broken connection does not continue or falsely complete a partial answer',async t=>{
   let calls=0,text='';
   t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response('data: {"choices":[{"delta":{"content":"Partial"},"finish_reason":"length"}]}\n\n')});
@@ -55,8 +79,8 @@ test('a broken connection does not continue or falsely complete a partial answer
 });
 test('Stop after a capped segment prevents any continuation request',async t=>{
   const controller=new AbortController();let calls=0;
-  t.mock.method(globalThis,'fetch',async()=>{calls++;return event('Partial','length')});
-  await assert.rejects(reply({apiBase:'https://app.test/api',space:null},message,false,controller.signal,()=>{controller.abort()},()=>{}),{name:'AbortError'});
+  t.mock.method(globalThis,'fetch',async(_url,options)=>{calls++;assert.equal(JSON.parse(options.body).maxTokens,512);return event('Partial','length')});
+  await assert.rejects(reply({apiBase:'https://app.test/api',space:null,accountControl:false},message,false,controller.signal,()=>{controller.abort()},()=>{}),{name:'AbortError'});
   assert.equal(calls,1);
 });
 test('a failure on a later segment leaves already streamed text available',async t=>{
@@ -92,6 +116,7 @@ test('account-controlled continuations consume the issued receipt and preserve o
   });
   await reply(gated,message,true,new AbortController().signal,value=>{text=value},()=>{},'dummy-session');
   assert.equal(text,'First second.');assert.equal(bodies.length,2);assert.equal(bodies[0].answerId,undefined);
+  assert.deepEqual(bodies.map(body=>body.maxTokens),[256,256]);
   assert.equal(bodies[1].answerId,answerId);assert.equal(bodies[1].receipt,receipt);assert.equal(bodies[1].mode,'fast');
 });
 test('Stop uses an independent authenticated metadata-only cancellation even between segments',async t=>{

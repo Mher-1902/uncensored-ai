@@ -41,7 +41,11 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
       if (remaining < (reasoning ? 128 : 32)) {
         throw new EngineError(422, 'This conversation has filled the model context. Start a new chat for another answer. Nothing was silently removed.');
       }
-      const outputBudget = Math.min(maxTokens + (reasoning ? 256 : 0), remaining);
+      // Only short prompts may use the candidate's larger 512-token segment.
+      // Larger prefixes retain the old budget and its request-deadline margin.
+      // Count the actual template, including a continuation's assistant prefix.
+      const segmentBudget = !reasoning && maxTokens === 512 && tokens.length > 128 ? 256 : maxTokens;
+      const outputBudget = Math.min(segmentBudget + (reasoning ? 256 : 0), remaining);
       const reasoningBudget = reasoning ? Math.min(256, outputBudget - 128) : 0;
       return {messages, reasoning, outputBudget, reasoningBudget, continuationOptions};
     },

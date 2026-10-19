@@ -1,6 +1,7 @@
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {readEvents} from '../src/stream.ts';
+import {segmentMaxTokens} from '../src/reply-settings.ts';
 
 const prompt='Explain in three short sentences why seasons happen on Earth.';
 const requestHeaders={'Content-Type':'application/json','X-Offscript-Client':'web'};
@@ -26,16 +27,16 @@ export async function benchmarkSample({apiBase,reasoned=false,accessToken=null,a
   try{
     for(let index=0;index<maxSegments;index++){
       requestSignal.throwIfAborted();
-      const continuation=index>0,deep=reasoned&&!continuation;
+      const continuation=index>0,deep=reasoned&&!continuation,maxTokens=segmentMaxTokens(accountControl,deep);
       if(continuation&&(accountControl||answerId)&&(!answerId||!receipt))fail('missing_receipt');
       const messages=[{role:'user',content:prompt},...(continuation?[{role:'assistant',content:text}]:[])];
       const segmentStart=now();
-      const row={index:index+1,continuation,mode:deep?'deep':'fast',httpStatus:null,firstTokenMs:null,firstAnswerMs:null,totalMs:null,completionTokens:null,decodeTokensPerSecond:null,finishReason:null,done:false};
+      const row={index:index+1,continuation,mode:deep?'deep':'fast',requestedMaxTokens:maxTokens,httpStatus:null,firstTokenMs:null,firstAnswerMs:null,totalMs:null,completionTokens:null,decodeTokensPerSecond:null,finishReason:null,done:false};
       segments.push(row);
       let segmentText='',nextReceipt=null,receivedAnswer=false,lastToken=null;
       try{
         const response=await fetchImpl(`${base}/chat`,{method:'POST',headers,redirect:'error',cache:'no-store',signal:requestSignal,
-          body:JSON.stringify({messages,maxTokens:256,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(answerId?{answerId,receipt}:{})}:{})})});
+          body:JSON.stringify({messages,maxTokens,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(answerId?{answerId,receipt}:{})}:{})})});
         row.httpStatus=response.status;
         if(!response.ok){await response.body?.cancel();fail(response.status===422?'context_limit':'http_error')}
         if(!response.body||response.headers.get('content-type')?.split(';',1)[0].trim().toLowerCase()!=='text/event-stream'){await response.body?.cancel();fail('invalid_stream')}
@@ -123,8 +124,8 @@ async function main(){
   const firstRequest=await benchmarkSample(options),samples=[];let cursor=0;
   // Avoid repeatedly calling a route whose initial request already failed.
   if(firstRequest.outcome==='completed')await Promise.all(Array.from({length:concurrency},async()=>{while(cursor++<count)samples.push(await benchmarkSample(options))}));
-  const report={schemaVersion:2,timestamp:new Date().toISOString(),syntheticCase:'seasons-three-sentences-v1',runs:samples.length,concurrency,mode:reasoned?'deep':'fast',limits:{answerTimeoutMs:600000,maxSegments:16,segmentMaxTokens:256},firstRequest,...summarizeBenchmark(samples),samples,
-    note:'The first request is reported separately; summary statistics cover the remaining warm samples. Natural completion requires finish_reason=stop and DONE after automatic continuations. Segment timings include queue/prefill/cleanup; first answer means visible text. Stream-derived decode rate is approximate, includes hidden thinking and excludes between-segment gaps; chunks may contain multiple tokens. Only completed answers enter completedAnswerMs. p95 is withheld below 20 observations. This fixed synthetic case does not establish answer quality, cold model-load time, capacity or a latency SLA.'};
+  const report={schemaVersion:3,timestamp:new Date().toISOString(),syntheticCase:'seasons-three-sentences-v1',runs:samples.length,concurrency,mode:reasoned?'deep':'fast',accountControl:options.accountControl,limits:{answerTimeoutMs:600000,maxSegments:16,requestedSegmentMaxTokens:{initial:segmentMaxTokens(options.accountControl,reasoned),continuation:segmentMaxTokens(options.accountControl,false)}},firstRequest,...summarizeBenchmark(samples),samples,
+    note:'The first request is reported separately; summary statistics cover the remaining warm samples. Natural completion requires finish_reason=stop and DONE after automatic continuations. Segment limits report client requests; server prompt/context guards may use lower budgets, and Deep has a separate hidden-thinking allowance. Segment timings include queue/prefill/cleanup; first answer means visible text. Stream-derived decode rate is approximate, includes hidden thinking and excludes between-segment gaps; chunks may contain multiple tokens. Only completed answers enter completedAnswerMs. p95 is withheld below 20 observations. This fixed synthetic case does not establish answer quality, cold model-load time, capacity or a latency SLA.'};
   console.log(JSON.stringify(report,null,2));
   if(firstRequest.outcome!=='completed'||samples.some(sample=>sample.outcome!=='completed'))process.exitCode=1;
 }

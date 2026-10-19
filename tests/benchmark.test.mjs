@@ -11,7 +11,7 @@ function stream(text,reason,{done=true,usage=3,answer=null,receipt=null,thinking
 function clock(){let value=0;return()=>value+=10}
 test('the benchmark distinguishes one naturally stopped answer from DONE-only partial output',async()=>{
   const complete=await benchmarkSample({apiBase,now:clock(),fetchImpl:async()=>stream('Private synthetic text','stop')});
-  assert.equal(complete.outcome,'completed');assert.equal(complete.segments[0].finishReason,'stop');assert.equal(complete.segments[0].done,true);assert.equal(complete.completionTokens,3);
+  assert.equal(complete.outcome,'completed');assert.equal(complete.segments[0].finishReason,'stop');assert.equal(complete.segments[0].done,true);assert.equal(complete.completionTokens,3);assert.equal(complete.segments[0].requestedMaxTokens,512);
   const partial=await benchmarkSample({apiBase,fetchImpl:async()=>stream('Private synthetic text',null)});
   assert.equal(partial.outcome,'incomplete');assert.equal(partial.incompleteReason,'missing_natural_stop');assert.notEqual(partial.firstAnswerMs,null);
   assert.doesNotMatch(JSON.stringify([complete,partial]),/Private synthetic text|seasons/);
@@ -24,7 +24,8 @@ test('length-limited segments continue the exact assistant prefix and think only
   }});
   assert.equal(result.outcome,'completed');assert.equal(result.completionTokens,9);assert.equal(result.segments.length,2);
   assert.equal(bodies[0].mode,'deep');assert.equal(bodies[0].reasoned,true);
-  assert.deepEqual(bodies[1],{messages:[bodies[0].messages[0],{role:'assistant',content:prefix}],maxTokens:256,mode:'fast',reasoned:false,continuation:true});
+  assert.equal(bodies[0].maxTokens,256);assert.deepEqual(result.segments.map(row=>row.requestedMaxTokens),[256,512]);
+  assert.deepEqual(bodies[1],{messages:[bodies[0].messages[0],{role:'assistant',content:prefix}],maxTokens:512,mode:'fast',reasoned:false,continuation:true});
   assert.ok(result.totalMs>result.segments[0].totalMs);assert.equal(result.firstAnswerMs,result.ttftMs);
   assert.doesNotMatch(JSON.stringify(result),/hidden synthetic thought|return 42|Code:/);
 });
@@ -62,8 +63,9 @@ test('continuations are bounded and cancellation stops further dispatch without 
   const limited=await benchmarkSample({apiBase,maxSegments:2,fetchImpl:async()=>{calls++;return stream('More ','length')}});
   assert.equal(calls,2);assert.equal(limited.incompleteReason,'segment_limit');assert.equal(limited.segments.length,2);
   const controller=new AbortController();calls=0;
-  const stopped=await benchmarkSample({apiBase,signal:controller.signal,fetchImpl:async()=>{calls++;controller.abort();return stream('Partial','length')}});
+  const stopped=await benchmarkSample({apiBase,signal:controller.signal,fetchImpl:async(_url,options)=>{calls++;assert.equal(JSON.parse(options.body).maxTokens,512);controller.abort();return stream('Partial','length')}});
   assert.equal(calls,1);assert.equal(stopped.outcome,'incomplete');assert.equal(stopped.incompleteReason,'cancelled');
+  assert.equal(stopped.segments[0].requestedMaxTokens,512);
 });
 test('missing token usage is not invented and deadline/transport failures remain content-free',async()=>{
   const noUsage=await benchmarkSample({apiBase,fetchImpl:async()=>stream('Answer','stop',{usage:null})});
@@ -81,6 +83,7 @@ test('ledger continuations use the issued identity and receipt without reporting
     return bodies.length===1?stream('First ','length',{answer:answerId,receipt}):stream('second','stop',{answer:answerId});
   }});
   assert.equal(result.outcome,'completed');assert.equal(bodies[1].answerId,answerId);assert.equal(bodies[1].receipt,receipt);assert.equal(result.cancellationAttempted,false);
+  assert.deepEqual(bodies.map(body=>body.maxTokens),[256,256]);assert.deepEqual(result.segments.map(row=>row.requestedMaxTokens),[256,256]);
   assert.doesNotMatch(JSON.stringify(result),/dummy-private-session|55555555|66666666|First |second/);
 });
 test('missing ledger receipts settle only the known answer with an independent cancellation signal',async()=>{

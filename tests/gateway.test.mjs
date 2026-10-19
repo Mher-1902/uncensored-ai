@@ -240,6 +240,48 @@ test('explicit modes and the transition field agree before inference',async t=>{
   assert.equal(request.reasoning_budget_tokens,256);
 });
 
+test('the larger Fast segment uses the actual templated-token boundary for questions and continuations',async t=>{
+  for(const tokens of [128,129])for(const continuation of [false,true])await t.test(`${tokens} prompt tokens, continuation=${continuation}`,async t=>{
+    const app=await run(t,{tokens});
+    const messages=[{role:'user',content:'Short question'},...(continuation?[{role:'assistant',content:'Existing answer  '}]:[])];
+    const response=await app.send({...input,maxTokens:512,messages,...(continuation?{continuation:true}:{})});
+    assert.equal(response.status,200);await response.text();
+    const generation=app.calls.find(call=>call.path==='/v1/chat/completions').body;
+    assert.equal(generation.max_tokens,tokens===128?512:256);
+    assert.deepEqual(generation.messages,messages);
+    assert.equal(generation.cache_prompt,false);assert.equal(generation.chat_template_kwargs.enable_thinking,false);
+    assert.equal(generation.reasoning_budget_tokens,undefined);
+    assert.equal(generation.continue_final_message,continuation?'content':undefined);
+    assert.equal(app.calls.filter(call=>call.path==='/slots/0').length,2);
+  });
+});
+test('the short-prompt Fast guard preserves other presets, Deep thinking and the context bound',async t=>{
+  for(const [tokens,maxTokens,mode,expected] of [[129,256,'fast',256],[129,1024,'fast',1024],[129,256,'deep',512],[129,512,'deep',768],[4000,512,'fast',96]])await t.test(`${tokens} tokens, ${mode}, requested ${maxTokens}`,async t=>{
+    const app=await run(t,{tokens});
+    const response=await app.send({...input,maxTokens,mode,reasoned:mode==='deep'});
+    assert.equal(response.status,200);await response.text();
+    const generation=app.calls.find(call=>call.path==='/v1/chat/completions').body;
+    assert.equal(generation.max_tokens,expected);assert.equal(generation.cache_prompt,false);
+    assert.equal(generation.chat_template_kwargs.enable_thinking,mode==='deep');
+    assert.equal(generation.reasoning_budget_tokens,mode==='deep'?256:undefined);
+  });
+});
+test('cancelling the larger Fast segment still stops dispatch and erases model state',{timeout:5000},async t=>{
+  const app=await run(t,{hold:true,tokens:128}),controller=new AbortController();
+  const pending=app.send({...input,maxTokens:512},controller.signal);
+  const rejected=assert.rejects(pending,error=>error.name==='AbortError');
+  while(!app.controls.length)await new Promise(resolve=>setTimeout(resolve,5));
+  controller.abort();await rejected;
+  for(let attempt=0;attempt<200;attempt++){
+    if(!(await (await fetch(`${app.url}/api/health`)).json()).busy)break;
+    await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  assert.equal((await (await fetch(`${app.url}/api/health`)).json()).busy,false);
+  assert.equal(app.calls.filter(call=>call.path==='/v1/chat/completions').length,1);
+  assert.equal(app.calls.find(call=>call.path==='/v1/chat/completions').body.max_tokens,512);
+  assert.equal(app.calls.filter(call=>call.path==='/slots/0').length,2);
+});
+
 test('completion is not acknowledged until model state disposal finishes',async t=>{
   let disposals=0,finishCleanup;
   const cleanup=new Promise(resolve=>{finishCleanup=resolve});
