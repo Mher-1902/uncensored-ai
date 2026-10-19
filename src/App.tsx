@@ -3,11 +3,11 @@ import { ArrowUp, Check, Copy, RotateCcw, Square, X } from 'lucide-react';
 const Reply=lazy(()=>import('./Reply'));
 import {loadConfig,reply,type Message,type SiteConfig} from './api';
 import {AccountDialog,useAccount} from './account';
-import {useOffscriptMotion} from './useOffscriptMotion';
 import {PilotDialog,usePilotControls} from './pilot-controls';
 import {canUsePilot} from './pilot-api';
 import {completedHistory,restoreQuestion,retryTurn,settleAnswer} from './conversation';
 import {AnswerMode} from './AnswerMode';
+import {HeroArt} from './HeroArt';
 
 function CopyReply({text}:{text:string}){
   const [label,setLabel]=useState('Copy reply');
@@ -28,7 +28,6 @@ export function App(){
   useEffect(()=>{if(!account.session)setPilotOpen(false)},[account.session?.user.id]);
   useEffect(()=>{if(account.recovery)setAccountOpen(true)},[account.recovery]);
   const input=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null),scroller=useRef<HTMLDivElement>(null),follow=useRef(true),generation=useRef(0);
-  useOffscriptMotion(messages.length===0);
   useEffect(()=>{let disposed=false;loadConfig().then(c=>{if(!disposed)setConfig(c)}).catch(e=>{if(!disposed)setConfigError(e.message)});return()=>{disposed=true}},[]);
   const erase=useEffectEvent(()=>{generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setError('');setBusy(false);setStatus('')});
   useEffect(()=>{if(config?.requireAuth&&!account.loading&&!account.session)erase()},[config?.requireAuth,account.loading,account.session]);
@@ -69,8 +68,8 @@ export function App(){
     <a className="skip-link" href="#composer">Skip to message</a>
     <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session?(config.accountControl?<button className="account-button" onClick={()=>setPilotOpen(true)}>Account</button>:<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>):<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
     <main>
-      {!active?<section className="hero" aria-labelledby="brand"><div className="hero-art" data-trig role="img" aria-label="Anonymous figure wearing a hat and sunglasses, working at a laptop"/><div className="hero-copy" data-trig><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:m.state==='streaming'?<WaitingReply/>:null}</div>{m.role==='assistant'&&m.state!=='streaming'&&<div className="reply-actions">{(m.state==='stopped'||m.state==='interrupted')&&<span className="reply-outcome">{m.state==='stopped'?'Stopped':m.content?'Reply interrupted':'No answer received'}</span>}{!busy&&retryTurn(messages,m.id)&&<button className="retry-reply" onClick={()=>void retry(m.id)}><RotateCcw size={13}/>Retry answer</button>}{m.content&&<CopyReply text={m.content}/>}</div>}</article>)}</div></div>}
-      <div className="composer-zone" data-trig={!active?true:undefined}>
+      {!active?<section className="hero" aria-labelledby="brand"><HeroArt/><div className="hero-copy"><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:m.state==='streaming'?<WaitingReply/>:null}</div>{m.role==='assistant'&&m.state!=='streaming'&&<div className="reply-actions">{(m.state==='stopped'||m.state==='interrupted')&&<span className="reply-outcome">{m.state==='stopped'?'Stopped':m.content?'Reply interrupted':'No answer received'}</span>}{!busy&&retryTurn(messages,m.id)&&<button className="retry-reply" onClick={()=>void retry(m.id)}><RotateCcw size={13}/>Retry answer</button>}{m.content&&<CopyReply text={m.content}/>}</div>}</article>)}</div></div>}
+      <div className="composer-zone">
         {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span><button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
         <form className="composer" onSubmit={send}>
           <label className="sr-only" htmlFor="composer">Message Offscript</label>

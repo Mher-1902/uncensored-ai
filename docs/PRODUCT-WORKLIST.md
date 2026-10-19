@@ -32,6 +32,12 @@ The Samsung in Latvia currently runs the CPU LLM and private gateway and is stil
 - Account API #19 and cancellation #21 are staged and their checks passed. They are not activated in Production. Database foundation has 31 real PostgreSQL isolation/admission checks.
 - Compact controls, removal of About/slogan and #00FF00 Courier response styling: PR #23, source a8bfda51ea77137cbbd20ef049336461664da0e4; Production deployment 5B2g9H8Nwmw7ZVZ4wz2a2QgJrju2. Application CI and Vercel checks passed. Initial Samsung checks passed at /home/rog/dev/checks/compact-chat-controls-1. Additional response-completion work remains active.
 
+## October 19 visual corrections
+
+- Active in PR #43: replace the native Fast / Deep Think dropdown with a dark, green-accented accessible listbox matching the composer. Keep keyboard navigation, touch/pointer selection and the current draft.
+- Active in PR #43: fix the mobile illustration’s brief rectangular matte and delayed animation restart. Render the original illustration with a transparent SVG filter output; animate opacity/position from the initial stylesheet instead of a late scroll observer. Preserve the original figure, welcome layout and reduced-motion preference.
+- Release only after desktop/mobile visual checks and the required CI; no backend or inference changes are included.
+
 ## Incoming additions to do after current release blockers
 
 Append new requests here with a short description and date. Promote them into the active sequence deliberately rather than discarding current work.
