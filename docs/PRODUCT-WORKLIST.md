@@ -13,6 +13,14 @@ Updated October 19, 2026. This file is the persistent work queue. Record new own
 - Finish the staged account admission/RLS, policy acknowledgement UI and linked policies, restricted database provisioning, cancellation/recovery and retention activation. User supplied public operator Mher Sukiasyan, sukiasyanmher7@gmail.com, operator country Armenia. On October 17 the owner confirmed the Samsung is physically in Latvia. Preserve the broad-audience direction and implement applicable age/guardian safeguards; do not repeatedly ask the same age question or silently invent an adults-only default.
 - Use incremental GitHub branches, PRs and CI. Keep Docker and remote Samsung development. Preserve keys, existing files and working production services. Full security audit/Daybreak and external Grafana remain deferred.
 
+## October 19 signup and growth requests
+
+- Add a privacy summary and full expandable notice in the sign-in/create-account popup, with an accessible standalone current-processing notice. This is separate from durable Terms acceptance and eligibility activation.
+- Welcome users inside the website after sign-in. The owner chose both in-app and email; prepare email for later, with no sender or marketing opt-in activated.
+- Prepare a free branded GitHub organization to replace the personal OAuth owner label. The owner chose preparation; organization Terms/CAPTCHA and OAuth ownership transfer need their specific human actions/confirmation. Do not move repositories or replace credentials.
+- Google sign-in is supported in code but remains provider-disabled. Google Cloud requires two-step verification, and the owner explicitly chose to leave setup pending for now.
+- Research marketing channels and record practical, capacity-aware experiments in GROWTH-EXPERIMENTS.md. No campaigns or third-party tracking are authorized by the request for ideas.
+
 ## Current infrastructure facts
 
 The Samsung in Latvia currently runs the CPU LLM and private gateway and is still required for working replies. Vercel serves the website/API; Supabase provides Auth/PostgreSQL (Paris). Vercel API/gateway functions were observed in IAD1 (United States). No external GPU inference service has been connected and no Samsung role has been retired. A future supported GPU host may replace its inference role; the Samsung could then remain a gateway or become optional. Do not describe that future option as an accomplished migration.
