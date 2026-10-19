@@ -1,0 +1,12 @@
+# Inert template. No installation or activation occurs from repository checkout.
+[Unit]
+Description=Hourly Offscript metadata retention
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=2m
+Persistent=true
+Unit=offscript-metadata-prune.service
+
+[Install]
+WantedBy=timers.target

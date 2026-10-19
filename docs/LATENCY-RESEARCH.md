@@ -63,3 +63,20 @@ The current two-thread profile was constrained to 0.8 CPU by Docker. A disposabl
 1.2 CPU briefly measured ~4.7 tokens/sec, but a longer attempt reached the conservative 75°C test guard and was stopped. It is not the selected deployment profile. The Compose model limit is now 1.0 CPU, leaving the existing 2500 MiB memory/zero-swap limit, one slot and 85°C runtime stop intact. Apply an in-place Docker CPU limit update while idle and persist the matching startup override; avoid restarting or rebuilding model weights for this change. Roll back to 0.8 if sustained observation shows excessive heat or instability.
 
 This is a modest scheduling improvement on an older CPU, not a GPU migration or a 50,000-user capacity result. End-to-end latency still includes prompt evaluation, network transit, queueing and answer length. Automatic continuation completes longer answers across bounded requests; it does not increase token-generation throughput.
+
+## October 19 scheduling and measurement review
+
+Offline disposable containers compared the exact selected model, runtime and template with production idle. Memory stayed at 2,500 MiB with zero swap, and the experiment stopped at 75°C. The serving containers were not changed. Cool-start 96-token segments measured:
+
+| Profile | First visible text | Approximate decode tokens/sec |
+| --- | ---: | ---: |
+| Current 1.0 CPU, two threads | 4.04 s | 3.88 |
+| One thread, same quota | 3.70 s | 4.34 |
+| Two threads, polling disabled | 4.01 s | 3.93 |
+| Two-thread control | 3.98 s | 3.85 |
+| Two physical cores pinned, same quota | 4.07 s | 3.86 |
+| Pinned physical cores, 1.1 CPU | 3.63 s | 4.27 |
+
+Both the one-thread and 1.1 CPU candidates subsequently hit the 75°C guard during the longer DNS-answer check. Their simple arithmetic and JavaScript deduplication fixtures passed, but that does not establish broad model quality or sustained performance. Neither candidate is selected for production. Do not raise the thermal threshold, shrink answers or substitute a model to present these short gains as a completed speed fix. The present 1.0 CPU/two-thread profile remains the rollback and serving baseline.
+
+The benchmark script previously treated `[DONE]` and any visible output as completion, even when `finish_reason` was `length`. Its replacement follows the actual assistant-prefix continuations, records each segment separately, requires natural `stop` plus `[DONE]`, classifies incomplete outcomes, and excludes incomplete answers from full-answer latency. It retains no prompt/reply content in reports and withholds p95 below 20 observations. The fixed seasons case measures latency and completion only; general-answer and coding quality need separate evaluated fixtures.

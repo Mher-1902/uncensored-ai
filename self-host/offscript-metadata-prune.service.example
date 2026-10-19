@@ -1,0 +1,27 @@
+# Inert template: not installed or enabled. Replace REVIEWED_COMMIT and verify
+# Node/dependency paths before installing it as an operator-controlled user unit.
+[Unit]
+Description=Prune finished Offscript account metadata
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=%h/.config/offscript/metadata-retention.env
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/dev/releases/REVIEWED_COMMIT
+EnvironmentFile=%h/.config/offscript/metadata-retention.env
+ExecStart=%h/uncensored-ai/.runtime/node/bin/node %h/dev/releases/REVIEWED_COMMIT/scripts/prune-metadata.mjs --apply
+TimeoutStartSec=30
+TimeoutStopSec=5
+CPUQuota=10%
+MemoryMax=128M
+MemorySwapMax=0
+TasksMax=32
+LimitCORE=0
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

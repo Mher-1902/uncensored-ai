@@ -346,4 +346,5 @@ query(f"DELETE FROM auth.users WHERE id='{A}';")
 check('account deletion cascades answer metadata after settlement',query(f"SELECT count(*) FROM offscript_private.answers WHERE user_id='{A}';")=='0')
 if args.local_fixture:
     subprocess.run(['node',str(root/'scripts/test-answer-stack.mjs')],check=True,timeout=60)
+    subprocess.run(['node',str(root/'scripts/test-metadata-retention.mjs')],check=True,timeout=30)
 print(json.dumps({'database_checks':len(checks),'result':'passed'}),flush=True)

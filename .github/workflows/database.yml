@@ -1,10 +1,10 @@
 name: Database isolation
 on:
   pull_request:
-    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
   push:
     branches: [main]
-    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
+    paths: ['supabase/**', 'cloud/vercel-api/**', 'cloud/vercel-gateway/**', 'server/**', 'src/api.ts', 'src/stream.ts', 'scripts/prune-metadata.mjs', 'scripts/test-metadata-retention.mjs', 'scripts/test_database.py', 'scripts/test-database-client.mjs', 'scripts/test-answer-stack.mjs', 'scripts/test-cli-release.mjs', '.github/workflows/database.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -109,7 +109,7 @@ jobs:
             docker network disconnect "$fixture_network" "$FIXTURE_ID"
           done
       - run: python3 scripts/test_database.py --container '${{ job.services.postgres.id }}' ${{ matrix.migration == 'managed-project' && '--provider-role' || '' }}
-      - name: Exercise client, binding, native cleanup and real SQL together
+      - name: Exercise client, binding, cleanup and retention with real SQL
         env:
           FIXTURE_ID: ${{ job.services.postgres.id }}
         run: |
@@ -126,4 +126,4 @@ jobs:
             node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
             -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
             NODE_OPTIONS=--max-old-space-size=128 OFFSCRIPT_TEST_FIXTURE=disposable-postgres \
-            node /app/scripts/test-answer-stack.mjs
+            node --input-type=module --eval "await import('/app/scripts/test-answer-stack.mjs'); await import('/app/scripts/test-metadata-retention.mjs');"
