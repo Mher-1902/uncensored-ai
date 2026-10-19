@@ -56,7 +56,7 @@ export function App(){
     }catch(e){if(current===generation.current&&!ctrl.signal.aborted){setError((e as Error).message);setMessages(m=>settleAnswer(m,answer.id,finalText,'interrupted'));if(!finalText)setDraft(value=>restoreQuestion(value,question))}}
     finally{cancelAnimationFrame(frame);if(current===generation.current){if(ctrl.signal.aborted){setMessages(m=>settleAnswer(m,answer.id,finalText,'stopped'));if(!finalText)setDraft(value=>restoreQuestion(value,question))}setBusy(false);setStatus('');controller.current=null;input.current?.focus()}}
   }
-  function stop(){controller.current?.abort();setStatus('Stopping…')}
+  function stop(event:React.MouseEvent<HTMLButtonElement>){event.preventDefault();controller.current?.abort();setStatus('Stopping…')}
   async function signOut(){if(!account.client||signingOut)return;clear();setSigningOut(true);try{const {error:failure}=await account.client.auth.signOut({scope:'local'});if(failure)throw failure}catch{setError('Sign-out could not complete. Please try again.')}finally{setSigningOut(false)}}
   const active=messages.length>0;
   return <div className={`shell ${active?'in-chat':''}`}>
@@ -76,7 +76,7 @@ export function App(){
                 <ChevronDown size={13} aria-hidden="true"/>
               </label>
             </div>
-            {busy?<button type="button" className="send" onClick={stop} aria-label="Stop response"><Square size={18} fill="currentColor"/></button>:<button className="send" disabled={!draft.trim()||!config||account.loading} aria-label="Send message"><ArrowUp size={22}/></button>}
+            {busy?<button key="stop" type="button" className="send" onClick={stop} aria-label="Stop response"><Square size={18} fill="currentColor"/></button>:<button key="send" type="submit" className="send" disabled={!draft.trim()||!config||account.loading} aria-label="Send message"><ArrowUp size={22}/></button>}
           </div>
         </form>
         <div className="under-composer"><span>Close or reload this page to clear your chat.</span><span className="keyboard">↵ send <b>·</b> ⇧ ↵ new line</span></div>
