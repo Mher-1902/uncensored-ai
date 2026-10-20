@@ -20,7 +20,7 @@ function fixture(chunks,options={}) {
       const chunk=chunks[generations++];assert.ok(chunk,'Unexpected generation');
       const choice={delta:{content:chunk.text},finish_reason:chunk.finish??'length'};
       const usage={prompt_tokens:generations===1?10:99,completion_tokens:chunk.tokens??body.max_tokens,...chunk.usage};
-      const stream=`data: ${JSON.stringify({choices:[choice]})}\n\ndata: ${JSON.stringify({usage})}\n\n${chunk.noDone?'':'data: [DONE]\n\n'}`;
+      const stream=`data: {"choices":[{"delta":{"role":"assistant","content":null}}]}\n\ndata: ${JSON.stringify({choices:[choice]})}\n\ndata: ${JSON.stringify({usage})}\n\n${chunk.noDone?'':'data: [DONE]\n\n'}`;
       let closed=false,output;
       const close=()=>{if(closed)return;closed=true;settings.signal.removeEventListener('abort',close);try{output.close()}catch{}};
       const bodyStream=new ReadableStream({start(controller){
@@ -71,7 +71,7 @@ test('a natural stop never starts another chunk',async()=>{
 });
 
 test('changed templates, invalid usage and incomplete streams cannot continue or report DONE',async()=>{
-  for(const [chunk,options] of [[{text:'first'},{mismatch:true}],[{text:'first',usage:{completion_tokens:3}},{}],[{text:'first',noDone:true},{}],[{text:'',tokens:0},{}]]) {
+  for(const [chunk,options] of [[{text:'first'},{mismatch:true}],[{text:'first',usage:{completion_tokens:3}},{}],[{text:'first',noDone:true},{}],[{text:'',tokens:0},{}],[{text:42},{}]]) {
     const f=fixture([chunk],options),seen=[];
     const response=await f.engine.generate(await f.engine.prepare(input,new AbortController().signal),new AbortController().signal);
     await assert.rejects(async()=>{for await(const raw of readEvents(response.body))seen.push(raw)});

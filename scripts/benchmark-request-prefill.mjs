@@ -25,6 +25,7 @@ const sampledFetch=async(url,options)=>{
   const part={allowance:body.max_tokens,reuse:body.cache_prompt,first_text_s:null,total_s:null,output_tokens:null,cached_tokens:null,finish_reason:null};
   parts.push(part);const began=performance.now();
   const response=await fetch(url,{...options,body:JSON.stringify(body)});
+  part.status=response.status;part.content_type=response.headers.get('content-type');part.events=0;
   if(!response.ok)return response;
   const iterator=readEvents(response.body)[Symbol.asyncIterator](),encoder=new TextEncoder();
   const stream=new ReadableStream({
@@ -35,6 +36,10 @@ const sampledFetch=async(url,options)=>{
         if(next.value==='[DONE]')part.total_s=(performance.now()-began)/1000;
         else {
           const event=JSON.parse(next.value),choice=event.choices?.[0];
+          part.events++;
+          if(part.events===1)part.initial_delta=Object.fromEntries(Object.entries(choice?.delta||{}).map(([key,value])=>[key,value===null?'null':typeof value]));
+          if(choice?.delta?.reasoning_content)part.reasoning_seen=true;
+          if(event.error)part.error_seen=true;
           if(choice?.delta?.content&&part.first_text_s===null)part.first_text_s=(performance.now()-began)/1000;
           if(choice?.finish_reason)part.finish_reason=choice.finish_reason;
           if(Number.isInteger(event.usage?.completion_tokens))part.output_tokens=event.usage.completion_tokens;
@@ -89,6 +94,6 @@ try {
   assert.equal((await readFile('/sys/fs/cgroup/memory.swap.current','utf8')).trim(),'0');
   console.log(JSON.stringify({profile,complete,total_s:(performance.now()-began)/1000,output_tokens:outputTokens,characters:text.length,requests,model_chunks:parts,erasures,
     quality:'not assessed',output_retained:false,external_network:false}));
-}catch {
-  console.log(JSON.stringify({profile,failed:true,reason:'stream_or_completion_validation',requests,model_chunks:parts,erasures}));process.exitCode=1;
+}catch(error) {
+  console.log(JSON.stringify({profile,failed:true,reason:'stream_or_completion_validation',failure_type:error.name,requests,model_chunks:parts,erasures}));process.exitCode=1;
 }finally{native.closeAllConnections();native.close();}

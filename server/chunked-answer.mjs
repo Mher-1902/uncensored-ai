@@ -17,7 +17,9 @@ export async function chunkedAnswer({prepared,generate,prepare,signal,chunkToken
         if(raw==='[DONE]'){done=true;break}
         const event=JSON.parse(raw),choice=event.choices?.[0];
         if(event.error || choice?.delta?.reasoning_content)throw failure();
-        if(choice?.delta?.content!==undefined) {
+        // The pinned OpenAI-compatible stream starts with role + null content.
+        // Empty metadata is not output; non-null payloads must still be text.
+        if(choice?.delta?.content!=null) {
           const content=choice.delta.content;
           if(typeof content!=='string' || text.length+chunk.length+content.length>65536)throw failure();
           chunk+=content;
