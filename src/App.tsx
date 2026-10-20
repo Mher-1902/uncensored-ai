@@ -10,6 +10,7 @@ import {AnswerMode} from './AnswerMode';
 import {HeroArt} from './HeroArt';
 import {WelcomeDialog} from './Welcome';
 import {PRIVACY_PATH} from './Privacy';
+import {CookieNotice,CookieDialog} from './CookieNotice';
 
 function CopyReply({text}:{text:string}){
   const [label,setLabel]=useState('Copy reply');
@@ -25,6 +26,7 @@ export function App(){
   const [config,setConfig]=useState<SiteConfig|null>(null),[configError,setConfigError]=useState('');
   const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[reasoned,setReasoned]=useState(false);
   const [pilotOpen,setPilotOpen]=useState(false),[accountOpen,setAccountOpen]=useState(false),[signingOut,setSigningOut]=useState(false);
+  const [cookiesOpen,setCookiesOpen]=useState(false);
   const account=useAccount(config?.auth);
   const pilot=usePilotControls(config,account.session?.user.id,account.accessToken);
   useEffect(()=>{if(!account.session)setPilotOpen(false)},[account.session?.user.id]);
@@ -83,12 +85,14 @@ export function App(){
             {busy?<button key="stop" type="button" className="send" onClick={stop} aria-label="Stop response"><Square size={18} fill="currentColor"/></button>:<button key="send" type="submit" className="send" disabled={!draft.trim()||!config||account.loading} aria-label="Send message"><ArrowUp size={22}/></button>}
           </div>
         </form>
-        <div className="under-composer"><span>Close or reload this page to clear your chat.</span><a className="privacy-link" href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Privacy</a><span className="keyboard">↵ send <b>·</b> ⇧ ↵ new line</span></div>
+        <div className="under-composer"><span>Close or reload this page to clear your chat.</span><a className="privacy-link" href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Privacy</a><button className="privacy-link" type="button" onClick={()=>setCookiesOpen(true)}>Cookies</button><span className="keyboard">↵ send <b>·</b> ⇧ ↵ new line</span></div>
       </div>
     </main>
+    <CookieNotice onDetails={()=>setCookiesOpen(true)} onDismiss={()=>input.current?.focus()}/>
     <div className="sr-only" aria-live="polite">{busy?status:error||'Ready for a question.'}</div>
     {config?.accountControl&&account.session&&<PilotDialog controls={pilot} open={pilotOpen} onClose={()=>setPilotOpen(false)} onSignOut={()=>void signOut()} signingOut={signingOut}/>}
     <AccountDialog account={account} open={accountOpen} onClose={()=>setAccountOpen(false)}/>
-    <WelcomeDialog open={account.welcome&&!accountOpen&&!pilotOpen&&!account.recovery} onClose={account.dismissWelcome} onAfterClose={()=>input.current?.focus()}/>
+    <WelcomeDialog open={account.welcome&&!accountOpen&&!pilotOpen&&!cookiesOpen&&!account.recovery} onClose={account.dismissWelcome} onAfterClose={()=>input.current?.focus()}/>
+    <CookieDialog open={cookiesOpen} onClose={()=>setCookiesOpen(false)}/>
   </div>;
 }

@@ -1,5 +1,6 @@
+import {PRIVACY_PATH,COOKIES_PATH} from './legal-paths';
+export {PRIVACY_PATH} from './legal-paths';
 export const PRIVACY_VERSION='2026-10-20';
-export const PRIVACY_PATH='/privacy.html';
 
 export function PrivacyContent(){
   return <div className="privacy-content">
@@ -11,7 +12,7 @@ export function PrivacyContent(){
     <p>Drafts and conversations stay in the current page’s memory. Messages pass through our website API to the model server to generate a reply. Offscript does not save a chat history, put messages into browser storage or its account database, or use conversations to build a model-training dataset. Request state is cleared after processing; canceling a reply initiates cleanup.</p>
     <p>Clear chat, signing out, reloading or leaving the page clears the conversation. Copying text, screenshots, browser extensions and your device can create copies outside this design. Temporary chats are not a guarantee of anonymity or zero infrastructure-provider logs. Do not submit passwords, private keys or information you are not entitled to share.</p>
     <h2>Browser storage</h2>
-    <p>This tab’s session storage holds the sign-in session and the verifier needed to complete sign-in. It does not hold your chat messages. Browsers may restore sessions, so sign out when using a shared device. The welcome message is tracked only in the current page’s memory.</p>
+    <p>This tab’s session storage holds the sign-in session, the verifier needed to complete sign-in and a notice-dismissal preference. It does not hold your chat messages. Browsers may restore sessions, so sign out when using a shared device. The welcome message is tracked only in the current page’s memory. See <a href={COOKIES_PATH} target="_blank" rel="noopener noreferrer">Cookies &amp; browser storage</a> for the entries, purposes and duration.</p>
     <h2>Purpose, retention and your choices</h2>
     <p>We process account and message information to provide the service you request. Where applicable, the legal bases are performing that service, legitimate interests in proportionate security and operation, and legal obligations. Reading this notice does not consent to unrelated processing.</p>
     <p>Our service providers may process technical records, such as IP addresses and request times, and may process information outside your country. Their own privacy and retention practices also apply: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel</a>, <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase</a>, <a href="https://tailscale.com/privacy-policy" target="_blank" rel="noopener noreferrer">Tailscale</a> and your chosen sign-in provider (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub</a> or <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google</a>, when available).</p>
