@@ -43,6 +43,8 @@ The lazy PostgreSQL pool has at most two connections per instance. It requires t
 
 ## Recovery, retention and deletion
 
+The read-only [worker-stop evidence helper](WORKER-RECOVERY.md) prepares a private protocol-5 capture and verifies stopped container/process/cgroup identities. It does not stop workers, reconcile SQL, delete accounts or activate a scheduler. Its private record is operator evidence, not a browser-supplied or tamper-proof authorization token.
+
 Known-stopped waiting handoffs can expire under the admission lock. Active/uncertain work never expires free. The gateway/database are not a distributed transaction; platform termination or database loss can require operator reconciliation. A new gateway process is not proof the old model stopped. Recovery must verify both affected gateway/model processes or cgroups stopped before releasing uncertain work.
 
 `prune_metadata()` expires safe handoffs, removes finished answer/worker records after 24 hours and daily aggregates after 35 days while retaining uncertain work. Scheduling and operator reconciliation remain activation gates. Account deletion must stop/settle computation first: migration 002 blocks Auth cascades while an answer or legacy lease is open. Settled metadata then cascades. No prompts/replies, birth dates, identity documents or payment details are introduced.

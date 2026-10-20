@@ -1,0 +1,24 @@
+# Worker-stop evidence for operator recovery
+
+Prepared October 20, 2026. This is an operator-only, read-only evidence helper. It does not stop/restart containers, change credentials, connect to PostgreSQL, release reservations, enable account admission or delete an account. It is not an active recovery service.
+
+An uncertain answer must keep occupying its reserved capacity until its affected model computation is known to have stopped. A new gateway UUID, expired deadline or successful retention run does not prove that. Before a planned stop, `self-host/recovery_proof.py --capture PRIVATE_FILE` records the current protocol-5 worker UUID, boot UUID, exact gateway/model container IDs, init-process start ticks and their cgroup-v2 paths. It inspects those containers twice and verifies that the worker UUID is stable. The worker metadata is read inside the exact gateway container using an empty-environment, fixed loopback health request; account sessions, service credentials and model content are not read.
+
+The helper uses the current user's explicit rootless Docker socket. It ignores remote contexts and registry configuration, accepts no URL or arbitrary container/command, and never uses sudo. The current protocol-4 production worker is intentionally unsupported; do not edit a record to make it look like protocol 5.
+
+## Controlled operator sequence
+
+1. Provision an owner-only directory outside every Git checkout, such as `/home/rog/.local/state/offscript/recovery` with mode 0700. Capture a new file there before the separately reviewed maintenance stop. Creation is exclusive, mode 0600, with no overwrite or final-path symlink following. No runtime change occurs during capture.
+2. Complete the separately authorized maintenance procedure to stop the affected gateway **and** model, and keep them stopped through reconciliation. This helper performs neither the stop nor any restart-prevention action.
+3. Run `python3 self-host/recovery_proof.py --verify PRIVATE_FILE` on the same Samsung/boot. Success requires both exact captured containers to remain stopped without a restart, zero init PID, valid stop times, the captured old processes to be gone (distinguishing PID reuse), and their cgroups to be absent or unpopulated with no processes. The helper rechecks container and boot identity before reporting success.
+4. Match the private captured worker UUID and deployment record to the affected database reservations in a separately reviewed operator reconciliation. A successful CLI result has `stopped: true` and `databaseChanged: false`; it is never itself permission to release database rows. No reconciliation SQL is implemented or activated by this increment.
+
+Missing Docker records, unsupported cgroups, unavailable permissions, a changed boot, a restarted container, a surviving process or populated descendant cgroup produce an unverified result. They never become a timeout-based cleanup acknowledgement. A changed boot or removed container requires separate operator evidence; this conservative helper cannot settle those cases. Account deletion still requires all work to be settled before the existing database guard permits an Auth cascade.
+
+The evidence is a private operator record, **not signed or tamper-proof attestation**. Anyone with the operator's host access can edit it. Never accept it from a browser, expose it through a public API, commit it to Git, or automatically feed its success flag into reservation release. The helper refuses files inside Git checkouts, non-private directories, permissive files, symlinks, duplicate JSON keys and unexpected record shapes. Errors print fixed reasons rather than Docker diagnostics or credentials. Only dummy records belong in tests.
+
+## Validation gates
+
+Unit fixtures cover both-stop success, one surviving peer, restart/boot changes, PID reuse, live descendants, missing permissions, protocol/worker identity changes, malformed evidence, private-file protections and error redaction. These tests do not prove that a real production stop occurred. Run the suite in the isolated Samsung validation container and required CI before merging. A real controlled capture/stop/verify rehearsal remains necessary after the reviewed protocol-5 runtime is deployed; no interruption of production is authorized merely to obtain test evidence.
+
+Restricted runtime credential activation, reviewed policy/eligibility flows, operator reconciliation, retention scheduling and account-deletion orchestration remain separate gates in [ACCOUNT-CONTROL.md](ACCOUNT-CONTROL.md).

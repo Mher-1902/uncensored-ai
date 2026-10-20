@@ -4,6 +4,8 @@ Updated October 20, 2026. This file is the persistent work queue. Record new own
 
 ## October 20 phone review and checkpoint
 
+- Account-lifecycle increment in progress: prepare read-only protocol-5 worker-stop evidence for operator reconciliation. Preserve uncertain reservations until both affected gateway/model processes are proven stopped. No live stop, SQL reconciliation, deletion, runtime credential, policy publication, serving flag or schedule is activated by this helper. See WORKER-RECOVERY.md.
+
 - Requested: remove the public infrastructure/location breakdown. Simplify the shared signup/standalone privacy notice while retaining a concise service-provider disclosure. Keep server/region implementation details in operator documentation.
 - Requested: bring the composer actions and Privacy/footer hints closer together. Preserve the below-button mode menu, original artwork and green terminal replies. Verify desktop, narrow mobile, keyboard use and a separately typed draft.
 - Requested: research and implement a formal cookie/storage notice. Keep the notice truthful to session-only sign-in, essential display preferences and no chat storage; do not enable optional tracking. Record the inventory and primary guidance in COOKIES.md.
