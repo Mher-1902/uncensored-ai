@@ -10,5 +10,6 @@ export function publicConfig(metadata, env = process.env) {
     }
   } catch {}
   return {model: metadata.model, modelUrl: metadata.modelUrl, space: null, apiBase: '/api', requireAuth: true, auth,
+    ...(env.FAST_REPLY_TOKENS === '512' ? {fastReplyTokens:512} : {}),
     ...(env.PILOT_ACCOUNT_CONTROL === 'true' ? {accountControl: true} : {})};
 }

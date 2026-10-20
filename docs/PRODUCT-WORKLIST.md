@@ -4,6 +4,8 @@ Updated October 20, 2026. This file is the persistent work queue. Record new own
 
 ## October 20 phone review and checkpoint
 
+- Active after the owner's START: implement and measure request-scoped prefill reuse before account lifecycle/admission activation and capacity testing. Keep the 512-token browser budget opt-in and disabled pending full-stream, thermal and release evidence. See ANSWER-PREFILL.md. The owner-authorized roadmap also includes account deletion/recovery/retention, measured pilot capacity and later infrastructure/subscriptions after demand; no paid resource is authorized.
+
 - Requested: remove the public infrastructure/location breakdown. Simplify the shared signup/standalone privacy notice while retaining a concise service-provider disclosure. Keep server/region implementation details in operator documentation.
 - Requested: bring the composer actions and Privacy/footer hints closer together. Preserve the below-button mode menu, original artwork and green terminal replies. Verify desktop, narrow mobile, keyboard use and a separately typed draft.
 - Requested: research and implement a formal cookie/storage notice. Keep the notice truthful to session-only sign-in, essential display preferences and no chat storage; do not enable optional tracking. Record the inventory and primary guidance in COOKIES.md.
