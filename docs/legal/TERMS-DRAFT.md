@@ -16,9 +16,9 @@ Offscript is intended for a broad audience. Access remains subject to applicable
 
 Use an account you control and protect its sign-in methods. You must have the rights and permissions needed to submit your inputs, including any personal or confidential information about other people. Do not submit passwords, private keys or information you are not entitled to share.
 
-You are responsible for your inputs and for how you use, act on or share the responses. You must comply with applicable law and other people's rights. Do not use the service for unlawful activity, impersonation, fraud, violating others' privacy, or distributing unlawful material. Do not bypass account restrictions, access another person's data, interfere with the service, or evade usage limits.
+**You are responsible for your inputs and for how you use, act on or share the responses. You must comply with applicable law and other people's rights.** Do not use the service for unlawful activity, impersonation, fraud, violating others' privacy, or distributing unlawful material. Do not bypass account restrictions, access another person's data, interfere with the service, or evade usage limits.
 
-The operator remains responsible for obligations that the law places on the operator. Assigning responsibility for your use does not waive your legal rights or excuse unlawful conduct by the operator.
+**The operator remains responsible for obligations that the law places on the operator.** Assigning responsibility for your use does not waive your legal rights or excuse unlawful conduct by the operator.
 
 ## Check AI answers
 

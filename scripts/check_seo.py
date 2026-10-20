@@ -76,6 +76,11 @@ require(privacy.canonicals == [canonical + "privacy.html"], "privacy notice need
 require("noindex" in privacy.meta.get("robots", ""), "privacy notice must not compete with the product homepage")
 require("__SITE_ORIGIN__" not in (DIST / "privacy.html").read_text(), "unresolved privacy canonical placeholder")
 require((DIST / "privacy.css").is_file(), "privacy notice stylesheet must be published")
+cookies = Page(DIST / "cookies.html")
+require(cookies.language == "en" and cookies.h1 == ["Cookies & browser storage"], "cookie notice needs complete initial HTML")
+require(cookies.canonicals == [canonical + "cookies.html"], "cookie notice needs its own canonical URL")
+require("noindex" in cookies.meta.get("robots", ""), "cookie notice must not compete with the product homepage")
+require("__SITE_ORIGIN__" not in (DIST / "cookies.html").read_text(), "unresolved cookie canonical placeholder")
 for prefix in ("og", "twitter"):
     require(home.meta.get(f"{prefix}:title") == home.titles[0], f"{prefix} title must match the page")
     require(home.meta.get(f"{prefix}:description") == home.meta["description"], f"{prefix} description must match the page")

@@ -7,11 +7,12 @@ const siteOrigin=new URL(process.env.SITE_ORIGIN||defaultOrigin).origin;
 await build();
 await build({build:{ssr:'src/entry-server.tsx',outDir:'.runtime/prerender',emptyOutDir:true}});
 {
-  const {render,renderPrivacy}=await import(pathToFileURL(resolve('.runtime/prerender/entry-server.js')).href);
+  const {render,renderPrivacy,renderCookies}=await import(pathToFileURL(resolve('.runtime/prerender/entry-server.js')).href);
   let html=await readFile('dist/index.html','utf8');
   html=html.replace('<div id="root"></div>',`<div id="root">${render()}</div>`).replaceAll('__SITE_ORIGIN__',siteOrigin);
   await writeFile('dist/index.html',html);
   await writeFile('dist/privacy.html',renderPrivacy().replaceAll('__SITE_ORIGIN__',siteOrigin));
+  await writeFile('dist/cookies.html',renderCookies().replaceAll('__SITE_ORIGIN__',siteOrigin));
   const xmlOrigin=siteOrigin.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
   await writeFile('dist/sitemap.xml',(await readFile('public/sitemap.xml','utf8')).replaceAll('__SITE_ORIGIN__',xmlOrigin));
   await writeFile('dist/robots.txt',(await readFile('public/robots.txt','utf8')).replaceAll('__SITE_ORIGIN__',siteOrigin));
