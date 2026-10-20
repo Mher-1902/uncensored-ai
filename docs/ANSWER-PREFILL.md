@@ -39,3 +39,6 @@ Paired fixed DNS task on the exact selected model: candidate completed632 tokens
 OpenMP PASSIVE waiting with spin counts0 and100 did not produce a material decode gain (3.8628 and3.8288 vs3.8434 tokens/s), and is not selected. See `evidence/openmp-profiles-20261020.json`. The generic MNN importer is not ready for this hybrid checkpoint: recurrent learned constants, Q5_K mapping and per-request state erasure require custom validation before inference can be compared.
 
 Release status: candidate only until exact-source full-budget/Stop/fresh-request probes, Samsung validation, required CI and immutable image checks pass. Neither the benchmark nor this document changes production configuration.
+
+
+October20 stress result: the full768-token Python-list workload reached75°C before completion. The fixture aborted and removed its container; production IDs were unchanged. Keep768 inactive and PR51draft. The successful632-token DNS sample does not override the failed worst-budget release gate. Both Samsung builds/SEO and128Node tests passed at56°C; this is correctness evidence, not thermal approval.
