@@ -77,7 +77,7 @@ export function App(){
         {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span><button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
         <form className="composer" onSubmit={send}>
           <label className="sr-only" htmlFor="composer">Message Offscript</label>
-          <textarea id="composer" ref={input} placeholder="What's on your mind?" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
+          <textarea id="composer" ref={input} placeholder="Ask anything. Go off script." value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
           <div className="composer-bottom">
             <div className="send-options">
               <AnswerMode reasoned={reasoned} onChange={setReasoned} disabled={Boolean(config?.space&&!config.apiBase)}/>
