@@ -1,6 +1,6 @@
 # Account control and answer admission
 
-The RLS foundation was approved and applied to the existing Supabase project on October 17. On October 18, the owner separately approved and installed the logical-answer migration and restricted NOLOGIN runtime role; eleven subsequent live permission/configuration checks passed. Both migrations are recorded in the official history. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for exact source hashes and release evidence. The tested protocol-5 runtime remains staged; the live native gateway is protocol 4 and production account enforcement remains off. No runtime password, published policy, serving eligibility or chat database was created.
+The RLS foundation was approved and applied to the existing Supabase project on October 17. On October 18, the owner separately approved and installed the logical-answer migration and restricted NOLOGIN runtime role; eleven subsequent live permission/configuration checks passed. Both migrations are recorded in the official history. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for exact source hashes and release evidence. The protocol-5 native gateway was deployed on October 20 from reviewed PR #47, source `1b9096d`, image `sha256:467077f0836f7118b7b85ab8cfa6432065fec4c186710d91e38e5dc349ccd311`. The model/ingress identities, 1.0 CPU profile and startup/rollback were preserved. Production account enforcement remains off. No runtime password, published policy, serving eligibility or chat database was created.
 
 ## Privilege boundary
 
@@ -28,7 +28,7 @@ Natural completion releases unused reservation. Confirmed initial pre-start reje
 
 ## API and worker lifecycle
 
-`PILOT_ACCOUNT_CONTROL=true` opts into the account UI, metadata routes, logical admission and public Stop endpoint. It is off by default; malformed values fail closed. Activation requires both migrations, protocol 5, a restricted runtime, published immutable policy links, eligibility flows and operational recovery/retention. Do not enable it on the current legacy production path.
+`PILOT_ACCOUNT_CONTROL=true` opts into the account UI, metadata routes, logical admission and public Stop endpoint. It is off by default; malformed values fail closed. Activation requires both migrations, protocol 5, a restricted runtime, published immutable policy links, eligibility flows and operational recovery/retention. The native protocol requirement is now met; the remaining account/runtime, policy, eligibility and operational gates still apply.
 
 - `GET /api/account` returns only the verified account's plan/status, acknowledgement and remaining allowance metadata.
 - `POST /api/acceptance` accepts exactly explicit `accepted: true` and current document versions. The UI checkbox starts unchecked and requires immutable links in `src/policy-documents.ts`; its registry remains empty while documents are drafts.
