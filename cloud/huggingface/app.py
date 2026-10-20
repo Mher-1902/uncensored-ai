@@ -26,12 +26,16 @@ class StopWhenCancelled(StoppingCriteria):
     def __init__(self, event): self.event = event
     def __call__(self, input_ids, scores, **kwargs): return self.event.is_set()
 
-@spaces.GPU(duration=60)
 def generate(messages, max_tokens):
+    # Reject invalid/oversized history before requesting the shared GPU quota.
     try:
         history, max_tokens = validate(messages, max_tokens)
     except ValueError as error:
         raise gr.Error(str(error)) from None
+    yield from generate_on_gpu(history, max_tokens)
+
+@spaces.GPU(duration=60)
+def generate_on_gpu(history, max_tokens):
     inputs = tokenizer.apply_chat_template(
         [{"role": "system", "content": SYSTEM}] + history,
         tokenize=True, return_dict=True, return_tensors="pt",

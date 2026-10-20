@@ -4,6 +4,8 @@ Updated October 20, 2026. This file is the persistent work queue. Record new own
 
 ## October 20 phone review and checkpoint
 
+- Owner reconfirmed **$0 provider spend**: prove product usefulness before any server rental. No paid subscription, trial, credit purchase, automatic overage or paid fallback is authorized. Google remains owner work. Their Hugging Face account is newer than the current free ZeroGPU hosting eligibility threshold; keep hosting pending. See FREE-INFERENCE-PILOT.md for primary-source provider decisions and the measured local experiment rejections.
+- Completed isolated kernel/speculation comparisons: Flash Attention and larger batches did not improve ~3.8 tokens/second; n-gram speculation was slower for both fixed general and coding samples. No runtime setting was changed. A separately downloaded, checksum-pinned Q8 artifact from the same selected checkpoint was also slower on both samples (~3.5 versus ~3.8 tokens/second, peak 73°C) and was not activated. Preserve the model, live containers, thermal guards and temporary chat tabs.
 - Owner requested faded invitation text in the empty prompt bar. Use “Ask anything. Go off script.” with the existing muted placeholder styling; it disappears as the user types. Preserve the accessible label, current draft, send behavior, artwork and terminal-green replies. This UI change is separate from inference experiments.
 
 - Account-lifecycle increment in progress: prepare read-only protocol-5 worker-stop evidence for operator reconciliation. Preserve uncertain reservations until both affected gateway/model processes are proven stopped. No live stop, SQL reconciliation, deletion, runtime credential, policy publication, serving flag or schedule is activated by this helper. See WORKER-RECOVERY.md.

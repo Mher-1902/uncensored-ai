@@ -1,0 +1,223 @@
+{
+  "date": "2026-10-20",
+  "source_ref": "39b840f44f24a693735d0e40e286f93771912340",
+  "engine_revision": "0504396140d1c882f5f6ee34466a42db7ae90114",
+  "model_sha256": "be3ccca13a9d1bc8b67165ea80bd103cd6151a37ad131183cc7ca388f78d9517",
+  "template_sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
+  "controls": {
+    "network": "none",
+    "cpu": 1,
+    "threads": 2,
+    "ram_mib": 2500,
+    "swap": 0,
+    "abort_celsius": 75,
+    "warmup_output_tokens": 4,
+    "sample_output_tokens_max": 96,
+    "temperature": 0,
+    "seed": 42,
+    "context": 4096,
+    "parallel": 1,
+    "gpu_layers": 0,
+    "kv_type": "f16",
+    "sampling": "synthetic deterministic comparison; production sampling unchanged"
+  },
+  "synthetic_prompts": {
+    "general": "Write six short sentences explaining why the Earth has seasons. Start directly with the explanation.",
+    "coding": "Write a Python function named fizzbuzz(n) that returns strings from 1 to n, replacing multiples of 3 with Fizz, 5 with Buzz and both with FizzBuzz. Return only code."
+  },
+  "results": {
+    "kernels": {
+      "samples": [
+        {
+          "profile": "baseline",
+          "flash": "off",
+          "batch": 128,
+          "ubatch": 64,
+          "first_text_s": 3.9865,
+          "total_s": 28.6796,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.8476,
+          "natural_stop": false,
+          "characters": 488,
+          "cpu_usage_s": 28.6421,
+          "throttled_s": 21.1821,
+          "memory_peak_mib": 215.5
+        },
+        {
+          "profile": "flash-on",
+          "flash": "on",
+          "batch": 128,
+          "ubatch": 64,
+          "first_text_s": 3.9957,
+          "total_s": 28.8688,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.8199,
+          "natural_stop": false,
+          "characters": 498,
+          "cpu_usage_s": 28.7995,
+          "throttled_s": 21.2009,
+          "memory_peak_mib": 214.6
+        },
+        {
+          "profile": "larger-batch",
+          "flash": "off",
+          "batch": 512,
+          "ubatch": 128,
+          "first_text_s": 4.0227,
+          "total_s": 28.9422,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.8127,
+          "natural_stop": false,
+          "characters": 488,
+          "cpu_usage_s": 28.9008,
+          "throttled_s": 21.7479,
+          "memory_peak_mib": 216.3
+        }
+      ],
+      "peak_celsius": 70.0,
+      "model_unchanged": true,
+      "serving_unchanged": true,
+      "note": "Three isolated kernel profiles, fixed96-token synthetic output,1CPU/2threads,2500MiB/zeroSwap,47C cooling target,75C guard. No production change or capacity claim."
+    },
+    "speculation": {
+      "samples": [
+        {
+          "profile": "none",
+          "workload": "general",
+          "first_text_s": 4.0197,
+          "total_s": 28.5435,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.8742,
+          "natural_stop": false,
+          "characters": 488,
+          "sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+          "cpu_usage_s": 28.5206,
+          "throttled_s": 21.3991,
+          "memory_peak_mib": 215.8
+        },
+        {
+          "profile": "none",
+          "workload": "coding",
+          "first_text_s": 7.0114,
+          "total_s": 31.6056,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.863,
+          "natural_stop": false,
+          "characters": 300,
+          "sha256": "bf0f783bb64eab406a419bb8e81b0cee97d192e33b1aad0453c7aeea9f33d9ed",
+          "cpu_usage_s": 31.5773,
+          "throttled_s": 24.32,
+          "memory_peak_mib": 217.9
+        },
+        {
+          "profile": "ngram-simple",
+          "workload": "general",
+          "first_text_s": 3.9947,
+          "total_s": 31.1116,
+          "output_tokens": 96,
+          "decode_tokens_s": 3.5037,
+          "natural_stop": false,
+          "characters": 488,
+          "sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+          "cpu_usage_s": 31.0941,
+          "throttled_s": 23.7873,
+          "memory_peak_mib": 249.2
+        },
+        {
+          "profile": "ngram-simple",
+          "workload": "coding",
+          "first_text_s": 6.9605,
+          "total_s": 40.1482,
+          "output_tokens": 96,
+          "decode_tokens_s": 2.8627,
+          "natural_stop": false,
+          "characters": 300,
+          "sha256": "bf0f783bb64eab406a419bb8e81b0cee97d192e33b1aad0453c7aeea9f33d9ed",
+          "cpu_usage_s": 40.0875,
+          "throttled_s": 32.8836,
+          "memory_peak_mib": 250.0
+        }
+      ],
+      "peak_celsius": 73.0,
+      "model_unchanged": true,
+      "serving_unchanged": true,
+      "note": "Two isolated speculative profiles; general and coding prompts, at most96 output tokens each,1CPU/2threads,2500MiB/zeroSwap,47C cooling target,75C guard. No production change, quality pass or capacity claim."
+    },
+    "quantization": {
+      "metrics": {
+        "samples": [
+          {
+            "profile": "q4",
+            "workload": "general",
+            "first_text_s": 4.0589,
+            "total_s": 28.7738,
+            "output_tokens": 96,
+            "decode_tokens_s": 3.8443,
+            "natural_stop": false,
+            "characters": 488,
+            "sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+            "cpu_usage_s": 28.6979,
+            "throttled_s": 21.4084,
+            "memory_peak_mib": 215.8
+          },
+          {
+            "profile": "q4",
+            "workload": "coding",
+            "first_text_s": 6.9882,
+            "total_s": 31.7867,
+            "output_tokens": 96,
+            "decode_tokens_s": 3.8389,
+            "natural_stop": false,
+            "characters": 300,
+            "sha256": "bf0f783bb64eab406a419bb8e81b0cee97d192e33b1aad0453c7aeea9f33d9ed",
+            "cpu_usage_s": 31.6974,
+            "throttled_s": 24.1186,
+            "memory_peak_mib": 217.8
+          },
+          {
+            "profile": "q8",
+            "workload": "general",
+            "first_text_s": 4.2664,
+            "total_s": 31.1508,
+            "output_tokens": 96,
+            "decode_tokens_s": 3.5341,
+            "natural_stop": false,
+            "characters": 489,
+            "sha256": "5b2b3c00492d5ed2154f76444e968779d43ac841a6b69e74cc360bcc12fdc3dc",
+            "cpu_usage_s": 31.0664,
+            "throttled_s": 22.5104,
+            "memory_peak_mib": 1851.9
+          },
+          {
+            "profile": "q8",
+            "workload": "coding",
+            "first_text_s": 7.4804,
+            "total_s": 34.4718,
+            "output_tokens": 96,
+            "decode_tokens_s": 3.52,
+            "natural_stop": false,
+            "characters": 300,
+            "sha256": "bf0f783bb64eab406a419bb8e81b0cee97d192e33b1aad0453c7aeea9f33d9ed",
+            "cpu_usage_s": 34.407,
+            "throttled_s": 25.1603,
+            "memory_peak_mib": 1854.1
+          }
+        ],
+        "peak_celsius": 73.0,
+        "model_unchanged": true,
+        "serving_unchanged": true,
+        "note": "Same checkpoint Q4_K_M versus Q8_0, general and coding prompts, at most96 output tokens each,1CPU/2threads,2500MiB/zeroSwap,47C cooling target,75C guard. No production change, quality pass or capacity claim."
+      },
+      "artifact": {
+        "repository": "HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive",
+        "revision": "2bcf35c1ebf62c837c12c1aa90b578ff4717e831",
+        "filename": "Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf",
+        "bytes": 2012012000,
+        "sha256": "3d6ba5655ffb7be0108607b8764ba33920ad23335f08d683806bfa979d838793",
+        "cost": "no_paid_resource",
+        "activated": false
+      }
+    }
+  },
+  "decision": "Keep production settings; no tested profile improved decode. Output caps prevent a full-answer/quality claim. This is not a p95, load or capacity test."
+}
