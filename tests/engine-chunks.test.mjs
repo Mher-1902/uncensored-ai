@@ -6,7 +6,7 @@ import {createGateway} from '../server/index.mjs';
 import {readEvents} from '../src/stream.ts';
 
 function fixture(chunks,options={}) {
-  const calls=[];let templates=0,generations=0;
+  const calls=[],controls=[];let templates=0,generations=0;
   function render(messages) {
     return messages.map((m,i)=>m.role==='user'?`U:${m.content}\nA:`:m.content+(i<messages.length-1?'\nEND\n':'')).join('');
   }
@@ -21,11 +21,19 @@ function fixture(chunks,options={}) {
       const choice={delta:{content:chunk.text},finish_reason:chunk.finish??'length'};
       const usage={prompt_tokens:generations===1?10:99,completion_tokens:chunk.tokens??body.max_tokens,...chunk.usage};
       const stream=`data: ${JSON.stringify({choices:[choice]})}\n\ndata: ${JSON.stringify({usage})}\n\n${chunk.noDone?'':'data: [DONE]\n\n'}`;
-      return new Response(stream,{headers:{'Content-Type':'text/event-stream'}});
+      let closed=false,output;
+      const close=()=>{if(closed)return;closed=true;settings.signal.removeEventListener('abort',close);try{output.close()}catch{}};
+      const bodyStream=new ReadableStream({start(controller){
+        output=controller;settings.signal.addEventListener('abort',close,{once:true});
+        const write=()=>{if(closed)return;output.enqueue(new TextEncoder().encode(stream));close()};
+        controls.push(write);
+        if(settings.signal.aborted)close();else if(generations!==options.holdGeneration)write();
+      },cancel:close});
+      return new Response(bodyStream,{headers:{'Content-Type':'text/event-stream'}});
     }
     throw Error('Unexpected engine route');
   };
-  return {calls,engine:createLlamaEngine({origin:'http://127.0.0.1:8081',fetchImpl,chunkTokens:options.chunkTokens??2})};
+  return {calls,controls,engine:createLlamaEngine({origin:'http://127.0.0.1:8081',fetchImpl,chunkTokens:options.chunkTokens??2})};
 }
 const input={messages:[{role:'user',content:'Code?'}],maxTokens:4,mode:'fast'};
 async function answer(f,inputValue=input,signal=new AbortController().signal) {
@@ -90,14 +98,26 @@ test('long prefixes retain the current per-request allowance and short prefixes 
   assert.equal((await long.engine.prepare({...input,maxTokens:512},signal)).outputBudget,256);
 });
 
-test('gateway keeps the slot exclusive across chunks and clears it before another request',async t=>{
-  const f=fixture([{text:'A'},{text:'B',tokens:1,finish:'stop'},{text:'C',tokens:1,finish:'stop'}],{chunkTokens:256});
+test('Stop during cached generation clears the exclusive slot before another user starts',{timeout:5000},async t=>{
+  const f=fixture([{text:'A'},{text:'B',tokens:1,finish:'stop'},{text:'C',tokens:1,finish:'stop'}],{chunkTokens:256,holdGeneration:2});
   const server=createGateway({engine:f.engine,origins:['https://offscript.test']});
   server.listen(0,'127.0.0.1');await once(server,'listening');
   t.after(()=>{server.closeAllConnections();server.close()});
-  const send=()=>fetch(`http://127.0.0.1:${server.address().port}/api/chat`,{method:'POST',headers:{Origin:'https://offscript.test','X-Offscript-Client':'web','Content-Type':'application/json'},body:JSON.stringify({...input,maxTokens:512})});
-  const first=await send(),text=await first.text();assert.match(text,/workerStopped":true/);assert.match(text,/\[DONE\]/);
+  const url=`http://127.0.0.1:${server.address().port}`;
+  const send=signal=>fetch(url+'/api/chat',{method:'POST',signal,headers:{Origin:'https://offscript.test','X-Offscript-Client':'web','Content-Type':'application/json'},body:JSON.stringify({...input,maxTokens:512})});
+  const controller=new AbortController(),first=await send(controller.signal),reading=first.text();
+  const cancelled=assert.rejects(reading);
   assert.equal(first.headers.get('x-offscript-protocol'),'5');
-  await (await send()).text();
+  for(let i=0;f.controls.length<2&&i<200;i++)await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(f.controls.length,2);
+  const second=send();let queued=false;
+  for(let i=0;i<200;i++) {
+    if((await (await fetch(url+'/api/health')).json()).queued===1){queued=true;break}
+    await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  assert.ok(queued);assert.equal(generations(f).length,2);
+  controller.abort();await cancelled;
+  const text=await (await second).text();assert.match(text,/"content":"C"/);assert.match(text,/workerStopped":true/);assert.match(text,/\[DONE\]/);
+  assert.equal(generations(f)[2].messages.length,1);
   assert.deepEqual(f.calls.filter(c=>c.path.startsWith('/slots/')||c.path==='/v1/chat/completions').map(c=>c.path),['/slots/0','/v1/chat/completions','/v1/chat/completions','/slots/0','/slots/0','/v1/chat/completions','/slots/0']);
 });
