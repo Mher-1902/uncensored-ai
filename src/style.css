@@ -79,3 +79,10 @@
 .welcome-dialog ul{padding-left:20px;margin:20px 0;color:#b8c1ba;font-size:14px;line-height:1.65}
 .welcome-dialog li+li{margin-top:12px}
 @media(max-width:700px){.under-composer{flex-wrap:wrap;column-gap:12px}.signup-privacy{padding:14px}.account-dialog .dialog-heading h2{font-size:22px}}
+
+/* Keep the small actions together instead of spreading them across the input. */
+.composer-bottom{justify-content:flex-end;gap:10px}
+.mode-menu{left:auto;right:0}
+.under-composer{justify-content:center;flex-wrap:wrap;column-gap:16px;row-gap:4px}
+.privacy-link{display:inline-flex;align-items:center;min-height:28px;padding:3px 2px}
+@media(max-width:700px){.under-composer{column-gap:10px;padding-top:8px;padding-bottom:8px}}

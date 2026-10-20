@@ -1,6 +1,14 @@
 # Product worklist
 
-Updated October 19, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated October 20, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+
+## October 20 phone review and checkpoint
+
+- Requested: remove the public infrastructure/location breakdown. Simplify the shared signup/standalone privacy notice while retaining a concise service-provider disclosure. Keep server/region implementation details in operator documentation.
+- Requested: bring the composer actions and Privacy/footer hints closer together. Preserve the below-button mode menu, original artwork and green terminal replies. Verify desktop, narrow mobile, keyboard use and a separately typed draft.
+- Released: signup privacy and in-app welcome through PR #45, merge `48c320bc2ef8a5f91967f663843d79426370c65f`, Production `Avco5HzVGVKSFV6jEZZUAe7P6fw5`. Both builds/SEO, 107 Node and four Python tests, required application/Docker CI, and live desktop/mobile GitHub returns and welcome focus passed. Welcome email is prepared only; Google remains deferred by the owner.
+- Verified October 20: the existing OAuth app 3935352 is owned by the user-controlled free `offscript-ai` organization. The repository remains `Mher-1902/uncensored-ai`; no repository transfer or credential replacement occurred. Use the organization's OAuth app settings URL rather than the old personal URL.
+- Inference speed and account activation remain in progress. Preserve the 75°C experiment guard, existing serving containers, no saved chats and zero-paid-provider constraint while the owner tests on a phone.
 
 ## Current owner requirements
 
