@@ -1,6 +1,6 @@
 # Account control and answer admission
 
-The RLS foundation was approved and applied to the existing Supabase project on October 17. On October 18, the owner separately approved and installed the logical-answer migration and restricted NOLOGIN runtime role; eleven subsequent live permission/configuration checks passed. Both migrations are recorded in the official history. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for exact source hashes and release evidence. The tested protocol-5 runtime remains staged; the live native gateway is protocol 4 and production account enforcement remains off. No runtime password, published policy, serving eligibility or chat database was created.
+The RLS foundation was approved and applied to the existing Supabase project on October 17. On October 18, the owner separately approved and installed the logical-answer migration and restricted NOLOGIN runtime role; eleven subsequent live permission/configuration checks passed. Both migrations are recorded in the official history. See [DATABASE-RELEASES.md](DATABASE-RELEASES.md) for exact source hashes and release evidence. The protocol-5 native gateway was deployed on October 20 from reviewed PR #47, source `1b9096d`, image `sha256:467077f0836f7118b7b85ab8cfa6432065fec4c186710d91e38e5dc349ccd311`. The model/ingress identities, 1.0 CPU profile and startup/rollback were preserved. Production account enforcement remains off. No runtime password, published policy, serving eligibility or chat database was created.
 
 ## Privilege boundary
 
@@ -28,7 +28,7 @@ Natural completion releases unused reservation. Confirmed initial pre-start reje
 
 ## API and worker lifecycle
 
-`PILOT_ACCOUNT_CONTROL=true` opts into the account UI, metadata routes, logical admission and public Stop endpoint. It is off by default; malformed values fail closed. Activation requires both migrations, protocol 5, a restricted runtime, published immutable policy links, eligibility flows and operational recovery/retention. Do not enable it on the current legacy production path.
+`PILOT_ACCOUNT_CONTROL=true` opts into the account UI, metadata routes, logical admission and public Stop endpoint. It is off by default; malformed values fail closed. Activation requires both migrations, protocol 5, a restricted runtime, published immutable policy links, eligibility flows and operational recovery/retention. The native protocol requirement is now met; the remaining account/runtime, policy, eligibility and operational gates still apply.
 
 - `GET /api/account` returns only the verified account's plan/status, acknowledgement and remaining allowance metadata.
 - `POST /api/acceptance` accepts exactly explicit `accepted: true` and current document versions. The UI checkbox starts unchecked and requires immutable links in `src/policy-documents.ts`; its registry remains empty while documents are drafts.
@@ -42,6 +42,8 @@ The bridge registers `waitUntil` before database reservation and uses an indepen
 The lazy PostgreSQL pool has at most two connections per instance. It requires the exact restricted runtime role, managed Supabase host and verified TLS; all values are bound parameters. Use the transaction pooler with unnamed queries for serverless deployment. `PILOT_DATABASE_URL` is server-only and cannot override TLS through URL parameters. Optional `PILOT_DATABASE_CA` supplies a needed public CA while verification stays enabled. Never use the project-owner login or service-role key.
 
 ## Recovery, retention and deletion
+
+The read-only [worker-stop evidence helper](WORKER-RECOVERY.md) prepares a private protocol-5 capture and verifies stopped container/process/cgroup identities. It does not stop workers, reconcile SQL, delete accounts or activate a scheduler. Its private record is operator evidence, not a browser-supplied or tamper-proof authorization token.
 
 Known-stopped waiting handoffs can expire under the admission lock. Active/uncertain work never expires free. The gateway/database are not a distributed transaction; platform termination or database loss can require operator reconciliation. A new gateway process is not proof the old model stopped. Recovery must verify both affected gateway/model processes or cgroups stopped before releasing uncertain work.
 
