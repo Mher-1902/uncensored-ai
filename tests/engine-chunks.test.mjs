@@ -15,7 +15,7 @@ function fixture(chunks,options={}) {
     calls.push({path,body});
     if(path==='/health'||path.startsWith('/slots/'))return Response.json({});
     if(path==='/apply-template')return Response.json({prompt:render(body.messages)+(++templates>1&&options.mismatch?'changed':'')});
-    if(path==='/tokenize')return Response.json({tokens:Array(10).fill(1)});
+    if(path==='/tokenize')return Response.json({tokens:Array(options.promptTokens??10).fill(1)});
     if(path==='/v1/chat/completions') {
       const chunk=chunks[generations++];assert.ok(chunk,'Unexpected generation');
       const choice={delta:{content:chunk.text},finish_reason:chunk.finish??'length'};
@@ -83,6 +83,11 @@ test('Deep Think keeps its original hidden-thinking budget and cleanup contract'
   const f=fixture([{text:'Answer',finish:'stop',tokens:1}]);
   await answer(f,{...input,maxTokens:256,mode:'deep'});
   const [request]=generations(f);assert.equal(request.max_tokens,512);assert.equal(request.reasoning_budget_tokens,256);assert.equal(request.cache_prompt,false);
+});
+test('long prefixes retain the current per-request allowance and short prefixes remain bounded',async()=>{
+  const short=fixture([]),long=fixture([],{promptTokens:129}),signal=new AbortController().signal;
+  assert.equal((await short.engine.prepare({...input,maxTokens:1024},signal)).outputBudget,512);
+  assert.equal((await long.engine.prepare({...input,maxTokens:512},signal)).outputBudget,256);
 });
 
 test('gateway keeps the slot exclusive across chunks and clears it before another request',async t=>{

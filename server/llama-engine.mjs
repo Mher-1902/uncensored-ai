@@ -43,7 +43,11 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
       if (remaining < (reasoning ? 128 : 32)) {
         throw new EngineError(422, 'This conversation has filled the model context. Start a new chat for another answer. Nothing was silently removed.');
       }
-      const outputBudget = Math.min(maxTokens + (reasoning ? 256 : 0), remaining);
+      // Bound a Fast request's wall time on the pilot CPU. Longer prefixes
+      // retain the existing allowance rather than spending the proxy deadline
+      // on both a large prefill and a larger output segment.
+      const visibleBudget=reasoning?maxTokens:Math.min(maxTokens,tokens.length>128?256:512);
+      const outputBudget = Math.min(visibleBudget + (reasoning ? 256 : 0), remaining);
       const reasoningBudget = reasoning ? Math.min(256, outputBudget - 128) : 0;
       return {messages, prompt, reasoning, outputBudget, reasoningBudget, continuationOptions};
     },
