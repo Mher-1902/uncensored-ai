@@ -1,0 +1,56 @@
+{
+  "samples": [
+    {
+      "profile": "baseline",
+      "flash": "off",
+      "batch": 128,
+      "ubatch": 64,
+      "output_sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+      "first_text_s": 4.091,
+      "total_s": 28.8118,
+      "output_tokens": 96,
+      "decode_tokens_s": 3.8434,
+      "natural_stop": false,
+      "characters": 488,
+      "cpu_usage_s": 28.7638,
+      "throttled_s": 21.4615,
+      "memory_peak_mib": 215.7
+    },
+    {
+      "profile": "passive-0",
+      "flash": "off",
+      "batch": 128,
+      "ubatch": 64,
+      "output_sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+      "first_text_s": 4.0088,
+      "total_s": 28.6037,
+      "output_tokens": 96,
+      "decode_tokens_s": 3.8628,
+      "natural_stop": false,
+      "characters": 488,
+      "cpu_usage_s": 28.4278,
+      "throttled_s": 18.3115,
+      "memory_peak_mib": 215.8
+    },
+    {
+      "profile": "passive-100",
+      "flash": "off",
+      "batch": 128,
+      "ubatch": 64,
+      "output_sha256": "b4460bcd315033a7c4479e4d1105187d4980be2d7d771e8242dffdaec62f5398",
+      "first_text_s": 3.9808,
+      "total_s": 28.7967,
+      "output_tokens": 96,
+      "decode_tokens_s": 3.8288,
+      "natural_stop": false,
+      "characters": 488,
+      "cpu_usage_s": 28.6946,
+      "throttled_s": 19.0312,
+      "memory_peak_mib": 215.4
+    }
+  ],
+  "peak_celsius": 68.0,
+  "model_unchanged": true,
+  "serving_unchanged": true,
+  "note": "Three isolated OpenMP wait profiles, fixed96-token synthetic output,1CPU/2threads,2500MiB/zeroSwap,47C cooling target,75C guard. No production change or capacity claim."
+}

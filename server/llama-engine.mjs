@@ -5,8 +5,9 @@ export class EngineError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 4096, chunkTokens = 256}) {
+export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 4096, chunkTokens = 256, maxFastTokens = 512}) {
   if(!Number.isInteger(chunkTokens)||chunkTokens<1||chunkTokens>256)throw Error('Invalid model chunk size.');
+  if(![512,768].includes(maxFastTokens))throw Error('Invalid Fast request allowance.');
   const base = new URL(origin);
   if (base.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.username || base.password || base.search || base.hash || base.pathname !== '/') {
     throw Error('The model listener must be a loopback HTTP origin.');
@@ -46,7 +47,7 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
       // Bound a Fast request's wall time on the pilot CPU. Longer prefixes
       // retain the existing allowance rather than spending the proxy deadline
       // on both a large prefill and a larger output segment.
-      const visibleBudget=reasoning?maxTokens:Math.min(maxTokens,tokens.length>128?256:512);
+      const visibleBudget=reasoning?maxTokens:Math.min(maxTokens,tokens.length>128?256:maxFastTokens);
       const outputBudget = Math.min(visibleBudget + (reasoning ? 256 : 0), remaining);
       const reasoningBudget = reasoning ? Math.min(256, outputBudget - 128) : 0;
       return {messages, prompt, reasoning, outputBudget, reasoningBudget, continuationOptions};

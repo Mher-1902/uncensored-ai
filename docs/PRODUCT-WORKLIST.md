@@ -2,6 +2,13 @@
 
 Updated October 20, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
 
+## October 20 latency runtime increment
+
+- Owner requests actual latency improvement, including a custom CPU runtime if needed; provider spend remains $0. Research and benchmark on the Samsung, preserve the selected checkpoint, chat isolation, existing services and the 75°C experimental guard.
+- OpenMP waiting experiment: baseline/passive0/passive100 measured 3.8434/3.8628/3.8288 decode tokens/s, identical fixed output fingerprint, peak68°C. No material win; not selected.
+- Candidate short Fast allowance768 uses three private256-token chunks inside one HTTP request, default ceiling512 remains. Fixed DNS task: candidate632 tokens/natural stop172.99s, current622 tokens/natural stop230.98s. The avoidable cross-HTTP59.10s pause becomes a0.29s internal chunk handoff; raw decode and first-token latency are not improved. Different completed lengths prevent treating elapsed-time difference as a universal speed percentage. Peak74°C. Full-budget, cancellation/cleanup and exact-release validation remain required before activation.
+- Alternate MNN runtime: exact hybrid mapping/streaming quantization prototypes are research only. Generic importer misses recurrent constants and Q5_K weights, and state reset needs proof. No converted model, speed result or external GPU activation is claimed.
+
 ## October 20 phone review and checkpoint
 
 - Owner reconfirmed **$0 provider spend**: prove product usefulness before any server rental. No paid subscription, trial, credit purchase, automatic overage or paid fallback is authorized. Google remains owner work. Their Hugging Face account is newer than the current free ZeroGPU hosting eligibility threshold; keep hosting pending. See FREE-INFERENCE-PILOT.md for primary-source provider decisions and the measured local experiment rejections.

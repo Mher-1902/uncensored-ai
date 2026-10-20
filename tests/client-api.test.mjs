@@ -48,20 +48,28 @@ test('a natural stop makes one request even for a short answer',async t=>{
   assert.equal(calls,1);
 });
 test('the reviewed larger request budget is opt-in and never enlarges initial thinking',async t=>{
-  for(const reasoned of [false,true]) {
+  for(const fastReplyTokens of [512,768])for(const reasoned of [false,true]) {
     const bodies=[];
     const mock=t.mock.method(globalThis,'fetch',async(_url,options)=>{
       bodies.push(JSON.parse(options.body));return bodies.length===1?event('Prefix ','length'):event('end','stop');
     });
-    await reply({apiBase:'https://app.test/api',space:null,fastReplyTokens:512},message,reasoned,new AbortController().signal,()=>{},()=>{});
-    assert.deepEqual(bodies.map(b=>b.maxTokens),reasoned?[256,512]:[512,512]);
+    await reply({apiBase:'https://app.test/api',space:null,fastReplyTokens},message,reasoned,new AbortController().signal,()=>{},()=>{});
+    assert.deepEqual(bodies.map(b=>b.maxTokens),reasoned?[256,fastReplyTokens]:[fastReplyTokens,fastReplyTokens]);
     assert.equal(bodies[1].messages.at(-1).content,'Prefix ');mock.mock.restore();
+  }
+});
+test('public reply configuration accepts the measured numeric presets',async t=>{
+  location(t);
+  const mock=t.mock.method(globalThis,'fetch',async()=>Response.json({space:null,apiBase:'/api'}));
+  for(const value of [256,512,768]) {
+    mock.mock.mockImplementation(async()=>Response.json({space:null,apiBase:'/api',fastReplyTokens:value}));
+    assert.equal((await loadConfig()).fastReplyTokens,value);
   }
 });
 test('public reply configuration rejects unbounded or mistyped budgets',async t=>{
   location(t);
   const mock=t.mock.method(globalThis,'fetch',async()=>Response.json({space:null,apiBase:'/api',fastReplyTokens:1024}));
-  for(const value of [1024,'512',0,null]) {
+  for(const value of [767,769,1024,'512','768',0,null]) {
     mock.mock.mockImplementation(async()=>Response.json({space:null,apiBase:'/api',fastReplyTokens:value}));
     await assert.rejects(loadConfig(),/reply configuration/);
   }

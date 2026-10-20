@@ -23,7 +23,10 @@ export function createGateway(options={}){
   const accessToken=options.accessToken??process.env.GATEWAY_ACCESS_TOKEN;
   if(accessToken&&!/^[\w-]{32,256}$/.test(accessToken))throw Error('GATEWAY_ACCESS_TOKEN must be a 32–256 character service credential.');
   const fetchImpl=options.fetchImpl||fetch;
-  const engine=options.engine||createLlamaEngine({origin:options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081',fetchImpl});
+  // The larger native allowance has a separate deployment opt-in. Existing
+  // callers and absent/invalid settings retain the tested 512-token ceiling.
+  const maxFastTokens=options.maxFastTokens??(process.env.FAST_REPLY_TOKENS==='768'?768:512);
+  const engine=options.engine||createLlamaEngine({origin:options.inference||process.env.LLAMA_URL||'http://127.0.0.1:8081',fetchImpl,maxFastTokens});
   const port=process.env.PORT||'8080';
   const apiOrigin=options.apiOrigin||process.env.PUBLIC_API_ORIGIN;
   if(apiOrigin){const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('PUBLIC_API_ORIGIN must be an exact HTTPS origin.');}

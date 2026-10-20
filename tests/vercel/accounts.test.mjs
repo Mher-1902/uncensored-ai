@@ -83,6 +83,16 @@ test('admission precedes generation; completion is acknowledged only after datab
   finish();const text=await result;assert.match(text,/\[DONE\]/);assert.doesNotMatch(text,/control|workerStopped/);
 });
 
+test('the optional 768 preset is admitted and forwarded without expanding the reserved allowance',async()=>{
+  const f=fixture(),payload={messages:[{role:'user',content:'Hello'}],mode:'fast',maxTokens:768};
+  const response=await f.bridge(request('/api/chat',payload));assert.equal(response.status,200);
+  const text=await response.text();assert.match(text,/\[DONE\]/);assert.doesNotMatch(text,/control|workerStopped/);
+  assert.equal(f.calls.find(call=>call[0]==='reserve')[6],768);
+  const native=JSON.parse(f.calls.find(call=>call[0]==='worker'&&call[1]==='/api/chat')[2].body);
+  assert.equal(native.maxTokens,768);assert.deepEqual(native.messages,payload.messages);
+  const settled=f.calls.find(call=>call[0]==='finish');assert.deepEqual(settled.slice(5),['completed',8,2,'stop',true,true]);
+});
+
 test('quota errors survive the public binding with approved wording and no database details',async()=>{
   const f=fixture({store:{startAnswer:async()=>{throw new AccountError('quota_exceeded')}}});
   const handler=createAppHandler('/api/chat',{env:{GATEWAY_URL:'https://internal.test'},fetchImpl:(url,options)=>f.bridge(new Request(url,options))});
@@ -98,8 +108,9 @@ test('old workers cannot admit a lease and unconfirmed completion retains an unc
 });
 
 test('continuation needs an owner-bound database receipt; the native model sees neither receipt nor answer ID',async()=>{
+  for(const maxTokens of [256,768]) {
   const answerId='55555555-5555-4555-8555-555555555555',token='66666666-6666-4666-8666-666666666666';
-  const payload={messages:[{role:'user',content:'Hello'},{role:'assistant',content:'Prefix '}],mode:'fast',maxTokens:256,continuation:true};
+  const payload={messages:[{role:'user',content:'Hello'},{role:'assistant',content:'Prefix '}],mode:'fast',maxTokens,continuation:true};
   const f=fixture({store:{continueAnswer:async(...args)=>{f.calls.push(['continue',...args]);return {state:'active',answerId,requestId:args[3],maxTokens:66}}}});
   for(const extra of [{},{answerId},{answerId,receipt:'bad'}])assert.equal((await f.bridge(request('/api/chat',{...payload,...extra}))).status,400);
   assert.equal(f.calls.length,0);
@@ -112,6 +123,7 @@ test('continuation needs an owner-bound database receipt; the native model sees 
   const denied=fixture({store:{continueAnswer:async()=>{throw new AccountError('continuation_invalid')}}});
   assert.equal((await denied.bridge(request('/api/chat',{...payload,answerId,receipt:token}))).status,409);
   assert.equal(denied.calls.some(call=>call[0]==='worker'&&call[1]==='/api/chat'),false);
+  }
 });
 
 test('a continuation receipt is emitted only after the database settles a proven stopped segment',async()=>{

@@ -38,8 +38,9 @@ test('missing account setup or a non-publishable key leaves sign-in unavailable'
   assert.deepEqual(config.auth.providers,[]);assert.equal(config.auth.emailEnabled,false);
 });
 test('larger Fast requests are published only after explicit deployment opt-in',()=>{
-  for(const value of [undefined,'256','1024','true','512 '])assert.equal(publicConfig({},{FAST_REPLY_TOKENS:value}).fastReplyTokens,undefined);
+  for(const value of [undefined,'256','767','769','1024','true','512 ','768 '])assert.equal(publicConfig({},{FAST_REPLY_TOKENS:value}).fastReplyTokens,undefined);
   assert.equal(publicConfig({},{FAST_REPLY_TOKENS:'512'}).fastReplyTokens,512);
+  assert.equal(publicConfig({},{FAST_REPLY_TOKENS:'768'}).fastReplyTokens,768);
 });
 
 test('app reads a late runtime binding and preserves its URL base path',async()=>{

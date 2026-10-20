@@ -1,13 +1,13 @@
 export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean; state?:'streaming'|'complete'|'stopped'|'interrupted'; questionId?:string; reasoned?:boolean };
 import {readEvents} from './stream.ts';
 export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
-export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null; accountControl?:boolean; fastReplyTokens?:256|512 };
+export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null; accountControl?:boolean; fastReplyTokens?:256|512|768 };
 export async function loadConfig():Promise<SiteConfig>{
   const response=await fetch('/config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Could not load the site configuration.');
   const config=await response.json();
   if(config.accountControl!==undefined&&typeof config.accountControl!=='boolean')throw Error('Invalid account configuration.');
-  if(config.fastReplyTokens!==undefined&&![256,512].includes(config.fastReplyTokens))throw Error('Invalid reply configuration.');
+  if(config.fastReplyTokens!==undefined&&![256,512,768].includes(config.fastReplyTokens))throw Error('Invalid reply configuration.');
   if(config.space&&!/^[\w.-]+\/[\w.-]+$/.test(config.space))throw Error('Invalid model configuration.');
   if(config.apiBase){
     const url=new URL(config.apiBase,location.origin);
@@ -70,7 +70,7 @@ export async function reply(config:SiteConfig,messages:Message[],reasoned:boolea
     if(continuation)history.push({role:'assistant',content:text});
     const deep=reasoned&&!continuation;
     if(config.accountControl&&continuation&&(!answerId||!receipt))throw Error('The answer could not be continued safely. The text received so far is kept.');
-    const maxTokens=!deep&&config.fastReplyTokens===512?512:256;
+    const maxTokens=deep?256:config.fastReplyTokens===768?768:config.fastReplyTokens===512?512:256;
     const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:history,maxTokens,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(config.accountControl?{answerId,receipt}:{})}:{})}),signal,cache:'no-store'});
     if(!response.ok){
       const body=await response.json().catch(()=>null);

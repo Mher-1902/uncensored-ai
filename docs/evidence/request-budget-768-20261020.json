@@ -1,0 +1,170 @@
+{
+  "samples": [
+    {
+      "profile": "candidate768",
+      "complete": true,
+      "total_s": 172.988546961,
+      "output_tokens": 632,
+      "characters": 3200,
+      "requests": [
+        {
+          "index": 1,
+          "first_text_s": 7.372446897,
+          "handoff_gap_s": null,
+          "max_stream_gap_s": 0.3188253330000007,
+          "total_s": 172.985735209,
+          "output_tokens": 632,
+          "finish_reason": "stop",
+          "cleanup_confirmed": true
+        }
+      ],
+      "model_chunks": [
+        {
+          "allowance": 256,
+          "reuse": true,
+          "first_text_s": 7.293999964,
+          "total_s": 73.977877245,
+          "output_tokens": 256,
+          "cached_tokens": 0,
+          "finish_reason": "length",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 259,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        },
+        {
+          "allowance": 256,
+          "reuse": true,
+          "first_text_s": 0.30217838199999825,
+          "total_s": 67.2217181,
+          "output_tokens": 256,
+          "cached_tokens": 319,
+          "finish_reason": "length",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 259,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        },
+        {
+          "allowance": 256,
+          "reuse": true,
+          "first_text_s": 0.2873929390000121,
+          "total_s": 31.596326900999994,
+          "output_tokens": 120,
+          "cached_tokens": 575,
+          "finish_reason": "stop",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 122,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        }
+      ],
+      "erasures": 2,
+      "quality": "not assessed",
+      "output_retained": false,
+      "external_network": false
+    },
+    {
+      "profile": "baseline512",
+      "complete": true,
+      "total_s": 230.980425139,
+      "output_tokens": 622,
+      "characters": 3142,
+      "requests": [
+        {
+          "index": 1,
+          "first_text_s": 7.4589021330000005,
+          "handoff_gap_s": null,
+          "max_stream_gap_s": 0.37854945399999995,
+          "total_s": 142.884759586,
+          "output_tokens": 512,
+          "finish_reason": "length",
+          "cleanup_confirmed": true
+        },
+        {
+          "index": 2,
+          "first_text_s": 59.093283208999985,
+          "handoff_gap_s": 59.10396313399999,
+          "max_stream_gap_s": 0.3554355360000045,
+          "total_s": 88.094105591,
+          "output_tokens": 110,
+          "finish_reason": "stop",
+          "cleanup_confirmed": true
+        }
+      ],
+      "model_chunks": [
+        {
+          "allowance": 256,
+          "reuse": true,
+          "first_text_s": 7.374577286,
+          "total_s": 74.775958017,
+          "output_tokens": 256,
+          "cached_tokens": 0,
+          "finish_reason": "length",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 259,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        },
+        {
+          "allowance": 256,
+          "reuse": true,
+          "first_text_s": 0.2900582599999907,
+          "total_s": 67.99033621,
+          "output_tokens": 256,
+          "cached_tokens": 319,
+          "finish_reason": "length",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 259,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        },
+        {
+          "allowance": 256,
+          "reuse": false,
+          "first_text_s": 59.068098098000014,
+          "total_s": 88.063730407,
+          "output_tokens": 110,
+          "cached_tokens": 0,
+          "finish_reason": "stop",
+          "status": 200,
+          "content_type": "text/event-stream",
+          "events": 112,
+          "initial_delta": {
+            "role": "string",
+            "content": "null"
+          }
+        }
+      ],
+      "erasures": 4,
+      "quality": "not assessed",
+      "output_retained": false,
+      "external_network": false
+    }
+  ],
+  "peak_celsius": 74.0,
+  "serving_unchanged": true,
+  "source": "/home/rog/dev/checks/answer-cache-20261020-5",
+  "source_validation": {
+    "root": "/home/rog/dev/checks/answer-cache-20261020-5",
+    "exit": 0,
+    "peak_celsius": 54.0,
+    "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "note": "One fixed synthetic naturally completed answer per profile. Exact weights/runtime/template; 1CPU/2threads; no network, swap or production change. Sampling fixed only in this fixture. Short prompt cap768 in fixture only, baseline512 native budget. No quality/p95/capacity claim."
+}
