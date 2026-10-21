@@ -2,8 +2,9 @@ import {useEffect, useRef, useState} from 'react';
 import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {X} from 'lucide-react';
 import type {AuthConfig} from './api';
-import {PrivacyContent,PRIVACY_PATH} from './Privacy';
+import {AccountPrivacy} from './AccountPrivacy';
 import {accountSessionProvider} from './session';
+import {welcomeNeeded,rememberWelcome} from './welcome-preference';
 
 export function useAccount(config: AuthConfig | null | undefined) {
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -13,9 +14,10 @@ export function useAccount(config: AuthConfig | null | undefined) {
   const [recovery, setRecovery] = useState(false);
   const [needsSignIn,setNeedsSignIn]=useState(false);
   const [welcomeUser,setWelcomeUser]=useState<string|null>(null);
+  const [welcomeCandidate,setWelcomeCandidate]=useState<{session:Session;config:{url:string;publishableKey:string}}|null>(null);
   const welcomedUser=useRef<string|null>(null);
   useEffect(() => {
-    setClient(null); setSession(null); setError(''); setRecovery(false); setLoading(false);setWelcomeUser(null);welcomedUser.current=null;setNeedsSignIn(false);
+    setClient(null); setSession(null); setError(''); setRecovery(false); setLoading(false);setWelcomeUser(null);setWelcomeCandidate(null);welcomedUser.current=null;setNeedsSignIn(false);
     if (!config) return;
     let disposed = false, cleanup = () => {};
     setLoading(true);
@@ -28,9 +30,9 @@ export function useAccount(config: AuthConfig | null | undefined) {
         if (disposed) return;
         setSession(value);
         if(event==='SIGNED_IN'&&value)setNeedsSignIn(false);
-        if(event==='SIGNED_IN'&&value&&welcomedUser.current!==value.user.id){welcomedUser.current=value.user.id;setWelcomeUser(value.user.id)}
+        if(event==='SIGNED_IN'&&value&&welcomedUser.current!==value.user.id){welcomedUser.current=value.user.id;setWelcomeUser(null);setWelcomeCandidate({session:value,config:{url:config.url,publishableKey:config.publishableKey}})}
         if (event === 'PASSWORD_RECOVERY') setRecovery(true);
-        if (event === 'SIGNED_OUT') {setRecovery(false);setWelcomeUser(null);welcomedUser.current=null;}
+        if (event === 'SIGNED_OUT') {setRecovery(false);setWelcomeUser(null);setWelcomeCandidate(null);welcomedUser.current=null;}
       });
       cleanup = () => {subscription.unsubscribe(); instance.auth.stopAutoRefresh();};
       setClient(instance);
@@ -43,9 +45,20 @@ export function useAccount(config: AuthConfig | null | undefined) {
     }).catch(() => {if (!disposed) {setError('Sign-in is unavailable. Please try again.'); setLoading(false);}});
     return () => {disposed = true; cleanup();};
   }, [config?.url, config?.publishableKey]);
+  useEffect(()=>{
+    let disposed=false;
+    if(welcomeCandidate&&welcomeCandidate.config.url===config?.url&&welcomeCandidate.config.publishableKey===config?.publishableKey)void welcomeNeeded(welcomeCandidate.session,welcomeCandidate.config).then(needed=>{
+      if(!disposed)setWelcomeUser(needed?welcomeCandidate.session.user.id:null);
+    });
+    return ()=>{disposed=true;};
+  },[welcomeCandidate,config?.url,config?.publishableKey]);
   const chatSession=accountSessionProvider(client?.auth||null,session?.user.id);
   async function accessToken(){return (await chatSession())?.accessToken||null;}
-  return {client, session, loading, error, recovery, setRecovery, accessToken,chatSession,needsSignIn,requireSignIn:()=>setNeedsSignIn(true), providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&!needsSignIn&&welcomeUser===session.user.id),dismissWelcome:()=>setWelcomeUser(null)};
+  function dismissWelcome(){
+    setWelcomeUser(null);
+    if(client&&session&&welcomeCandidate&&welcomeCandidate.session.user.id===session.user.id&&welcomeCandidate.config.url===config?.url&&welcomeCandidate.config.publishableKey===config?.publishableKey)void rememberWelcome(client.auth,session.user.id,welcomeCandidate.config);
+  }
+  return {client, session, loading, error, recovery, setRecovery, accessToken,chatSession,needsSignIn,requireSignIn:()=>setNeedsSignIn(true), providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&!needsSignIn&&welcomeUser===session.user.id),dismissWelcome};
 }
 
 type Account = ReturnType<typeof useAccount>;
@@ -109,7 +122,7 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
     <div className="dialog-heading"><h2 id="account-title">{title}</h2><button className="icon-button" type="button" aria-label="Close account form" onClick={close}><X size={21}/></button></div>
     <p>{mode === 'signup' ? 'Create an account for temporary conversations.' : mode === 'reset' ? 'We’ll send a link to the email address on your account.' : mode === 'password' ? 'Use a unique password with at least 12 characters.' : 'Sign in or create an account with a provider below.'}</p>
     {account.needsSignIn&&<p role="status">Your session expired. Your reply stays on this page until you leave or reload. Copy anything you need before continuing to sign in.</p>}
-    {(mode==='signin'||mode==='signup')&&<section className="signup-privacy" aria-labelledby="signup-privacy-title"><h3 id="signup-privacy-title">Your account stays. Chats don’t.</h3><p>Your provider shares sign-in and profile details. Messages are processed to answer you, without a saved chat history. Infrastructure providers may keep operational records.</p><details><summary>Read the Privacy Policy</summary><PrivacyContent/><a href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Open Privacy Policy in a new tab ↗</a></details><p className="muted">Signing in does not subscribe you to marketing or a paid plan.</p></section>}
+    {(mode==='signin'||mode==='signup')&&<AccountPrivacy signup={mode==='signup'}/>}
     {account.error && <p className="account-error" role="alert">{account.error}</p>}
     {!account.client ? <p role="status">{account.loading ? 'Preparing sign-in…' : 'Account setup is not ready yet. Please check back soon.'}</p> : <>
       {(mode === 'signin' || mode === 'signup') && <div className="account-providers">{account.providers.map(provider => <button type="button" className="account-provider" key={provider} disabled={pending} onClick={() => void oauth(provider)}>Continue with {provider === 'github' ? 'GitHub' : 'Google'}</button>)}</div>}
@@ -120,8 +133,9 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
       {mode !== 'reset' && <label>{mode === 'password' ? 'New password' : 'Password'}<input type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={event => setPassword(event.target.value)} minLength={mode === 'signin' ? undefined : 12} maxLength={128} required disabled={pending}/></label>}
       {error && <p className="account-error" role="alert">{error}</p>}{notice && <p className="account-notice" role="status">{notice}</p>}
       <button className="dialog-done" disabled={pending}>{pending ? 'Please wait…' : {signin: 'Sign in', signup: 'Create account', reset: 'Send reset link', password: 'Update password'}[mode]}</button>
-      {mode !== 'password' && <div className="account-links">{mode !== 'signin' && <button type="button" onClick={() => choose('signin')} disabled={pending}>Sign in</button>}{mode !== 'signup' && <button type="button" onClick={() => choose('signup')} disabled={pending}>Create account</button>}{mode === 'signin' && <button type="button" onClick={() => choose('reset')} disabled={pending}>Forgot password?</button>}</div>}
-    </form>}</>}
+    </form>}
+    {mode !== 'password' && <div className="account-links">{mode !== 'signin' && <button type="button" onClick={() => choose('signin')} disabled={pending}>Sign in</button>}{mode !== 'signup' && <button type="button" onClick={() => choose('signup')} disabled={pending}>Create account</button>}{account.emailEnabled&&mode === 'signin' && <button type="button" onClick={() => choose('reset')} disabled={pending}>Forgot password?</button>}</div>}
+    </>}
     <p className="muted">Your account is saved. Chats clear when you leave or reload.</p>
   </dialog>;
 }

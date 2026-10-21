@@ -69,6 +69,7 @@
 .signup-privacy summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .signup-privacy details[open]>summary{margin-bottom:18px}
 .signup-privacy a,.welcome-dialog a{color:var(--accent);text-underline-offset:3px}
+.account-dialog .signin-privacy{font-size:12px;line-height:1.6;color:var(--muted);margin:16px 0}.signin-privacy a{color:var(--accent);text-underline-offset:3px}
 .privacy-content h2{font-size:16px;font-weight:600;letter-spacing:-.2px;margin:24px 0 10px}
 .privacy-content p{font-size:13px;line-height:1.75;overflow-wrap:anywhere}
 .privacy-content .privacy-version{font-size:11px;color:var(--muted)}

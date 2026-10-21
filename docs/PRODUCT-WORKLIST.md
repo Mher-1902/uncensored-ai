@@ -1,6 +1,15 @@
 # Product worklist
 
-Updated October 20, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated October 21, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+
+## October 21 owner additions: research and returning-account notices
+
+- Owner requests multi-source factual verification. The independent-source, citation, privacy and latency contract is in RESEARCH-MODE.md. The live pilot has no retrieval adapter; do not claim live cross-checking or change the selected model to an alleged MoE. Research-only versus automatic factual routing is awaiting the owner's choice. Free-only remains mandatory.
+- Ordinary Sign in keeps a compact processing explanation and Privacy/Cookies links before OAuth. Explicit Create account keeps the full expandable signup notice, including provider-only signup. OAuth sign-in may also create an account; do not hide all pre-login notice or infer legal consent from the button label.
+- Dismissal of the informational welcome is an editable account display preference, offscript_welcome, with its version and original-account association. It is never proof of legal consent, eligibility, acceptance or authentication. Writes occur only after dismissal, outside auth-event callbacks, using the original account’s captured credentials rather than a mutable SDK session. Failed synchronization can show the welcome again; chat clearing and server auth remain unchanged.
+- Got it remembers dismissal for up to 180 days in one non-identifying localStorage timestamp. Authentication remains tab-session-only and chats/drafts page-memory-only. Expiry, another browser or blocked/cleared storage can show the notice again. Public Privacy/Cookies wording must reflect this purpose and lifetime. No optional analytics, advertising or fake Accept all controls are added.
+- Optional browser GPU preparation remains separate in draft PR55 at ce72af9: 31 tests and all required CI passed. The owner chose to run the two fixed tests manually; do not reload or interfere with the prototype tab. Actual GPU compatibility and speed remain unproven until results arrive.
+- This notice increment contains no schema migration, runtime credential, account-admission flag, Terms publication or inference-service change. Release requires Samsung build/test, CI and fresh UI verification.
 
 ## October 20 phone review and checkpoint
 
