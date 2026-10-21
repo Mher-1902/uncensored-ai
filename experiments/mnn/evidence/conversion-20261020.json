@@ -1,0 +1,31 @@
+{
+  "selected_source_sha256": "be3ccca13a9d1bc8b67165ea80bd103cd6151a37ad131183cc7ca388f78d9517",
+  "source_coverage": 320,
+  "matrix_ops": 187,
+  "source_quantizations": [
+    12,
+    13,
+    14
+  ],
+  "tie_embeddings": {
+    "weight_offset": 1222679014,
+    "alpha_offset": 1731238374,
+    "alpha_size": 127139840,
+    "quant_bit": 8,
+    "quant_block": 16,
+    "alpha_dtype": "fp32"
+  },
+  "rotary_base": 10000000.0,
+  "weight_bytes": 1859371494,
+  "graph_bytes": 3003000,
+  "elapsed_s": 303.40802578791045,
+  "model_loaded": false,
+  "production_changed": false,
+  "sha256": {
+    "llm.mnn.weight": "442f8bd1ccff13d87d3a467b1761cd766bfc92268cd4aed88c0c77fa54454cc2",
+    "llm.mnn": "a3d32ecb9f55c16218835e94bc4370a0a2652db4cfc7497f0d7855f7e9643f9b",
+    "llm_config.json": "f8ce7181f879e5067479dae5d957d0b2c29049e3bcdcbb5ef65c25dd2a7aeb7d"
+  },
+  "peak_celsius": 63.0,
+  "serving_unchanged": true
+}

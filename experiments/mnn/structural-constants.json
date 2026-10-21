@@ -1,0 +1,438 @@
+[
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        3
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        1,
+        -1,
+        2048
+      ]
+    },
+    "name": "/blocks.0/Constant_output_0",
+    "outputIndexes": [
+      3
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dataFormat": "NCHW",
+      "dataType": "DT_FLOAT",
+      "float32s": [
+        1.0
+      ]
+    },
+    "name": "Const28",
+    "outputIndexes": [
+      14
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        2
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        -1,
+        128
+      ]
+    },
+    "name": "/blocks.0/self_attn/Constant_2_output_0",
+    "outputIndexes": [
+      22
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        1
+      ]
+    },
+    "name": "Const60",
+    "outputIndexes": [
+      36
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        1
+      ]
+    },
+    "name": "Unsqueeze64",
+    "outputIndexes": [
+      39
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        0
+      ]
+    },
+    "name": "/rotary/Constant_5_output_0",
+    "outputIndexes": [
+      44
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        -1
+      ]
+    },
+    "name": "/rotary/Constant_output_0",
+    "outputIndexes": [
+      54
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        8
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_2_output_0",
+    "outputIndexes": [
+      201
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        512
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_3_output_0",
+    "outputIndexes": [
+      202
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        2
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        256,
+        256
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_4_output_0",
+    "outputIndexes": [
+      205
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        256
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_7_output_0",
+    "outputIndexes": [
+      210
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        64
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_14_output_0",
+    "outputIndexes": [
+      215
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        3
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_12_output_0",
+    "outputIndexes": [
+      216
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1,
+        32
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_FLOAT",
+      "float32s": [
+        1.0,
+        0.604296,
+        0.365174,
+        0.220673,
+        0.133352,
+        0.080584,
+        0.048697,
+        0.029427,
+        0.017783,
+        0.010746,
+        0.006494,
+        0.003924,
+        0.002371,
+        0.001433,
+        0.000866,
+        0.000523,
+        0.000316,
+        0.000191,
+        0.000115,
+        7e-05,
+        4.2e-05,
+        2.5e-05,
+        1.5e-05,
+        9e-06,
+        6e-06,
+        3e-06,
+        2e-06,
+        1e-06,
+        1e-06,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "name": "/rotary/Constant_1_output_0",
+    "outputIndexes": [
+      220
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        2
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        -1,
+        96
+      ]
+    },
+    "name": "/rotary/Constant_4_output_0",
+    "outputIndexes": [
+      223
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        32
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        0,
+        33,
+        66,
+        3,
+        36,
+        69,
+        6,
+        39,
+        72,
+        9,
+        42,
+        75,
+        12,
+        45,
+        78,
+        15,
+        48,
+        81,
+        18,
+        51,
+        84,
+        21,
+        54,
+        87,
+        24,
+        57,
+        90,
+        27,
+        60,
+        93,
+        30,
+        63
+      ]
+    },
+    "name": "onnx::Gather_555",
+    "outputIndexes": [
+      225
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        2
+      ]
+    },
+    "name": "/rotary/Constant_7_output_0",
+    "outputIndexes": [
+      244
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        3
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_20_output_0",
+    "outputIndexes": [
+      259
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        2
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_21_output_0",
+    "outputIndexes": [
+      271
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  },
+  {
+    "main_type": "Blob",
+    "main": {
+      "dims": [
+        1
+      ],
+      "dataFormat": "NCHW",
+      "dataType": "DT_INT32",
+      "int32s": [
+        1073741824
+      ]
+    },
+    "name": "/blocks.3/self_attn/Constant_18_output_0",
+    "outputIndexes": [
+      274
+    ],
+    "type": "Const",
+    "defaultDimentionFormat": "NHWC"
+  }
+]

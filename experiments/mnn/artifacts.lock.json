@@ -1,0 +1,23 @@
+{
+  "selected_model": {
+    "repository": "HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive",
+    "revision": "2bcf35c1ebf62c837c12c1aa90b578ff4717e831",
+    "file": "Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+    "sha256": "be3ccca13a9d1bc8b67165ea80bd103cd6151a37ad131183cc7ca388f78d9517"
+  },
+  "structural_graph": {
+    "repository": "taobao-mnn/Qwen3.5-2B-MNN",
+    "revision": "35781816d7b6a9dcb273a6765ac9563401951c3c",
+    "file": "llm.mnn",
+    "sha256": "23df98f8b341b277365e0bbca025c1d192939e3d32d7f79776352c6f32e77960"
+  },
+  "mnn_wheel": {
+    "version": "3.6.1",
+    "sha256": "c3e269d179e5c67d5cb387799005b98b18008e8e2e6f2e0fcac4c4752b4cdd3d",
+    "runtime_sha256_after_removing_executable_stack": "f527464a73029398738e05e28c5a7c5072e7c3e5ebda60956614b5ef296d19e6",
+    "tools_sha256_after_removing_executable_stack": "1445c9682bbc78e27f922beecfcb7459994a6f5aa24f22010b72ed5fdd927106"
+  },
+  "reference_commit": "0504396140d1c882f5f6ee34466a42db7ae90114",
+  "mnn_source_inspected": "23d05cc24f5258ff3e6fb794246acc183903274d",
+  "production_enabled": false
+}

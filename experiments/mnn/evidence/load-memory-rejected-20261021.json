@@ -1,0 +1,35 @@
+{
+  "status": "not_deployable",
+  "load_complete": false,
+  "forward_complete": false,
+  "attempts": [
+    {
+      "limit_mib": 2500,
+      "oom": true,
+      "hash_read_cache_discarded": true,
+      "peak_celsius": 64
+    },
+    {
+      "limit_mib": 3072,
+      "oom": true,
+      "hash_read_cache_discarded": true,
+      "peak_celsius": 70
+    },
+    {
+      "limit_mib": 3584,
+      "oom": true,
+      "hash_read_cache_discarded": true,
+      "peak_celsius": 65
+    }
+  ],
+  "separate_interrupted_attempt": {
+    "limit_mib": 3584,
+    "reason": "public work resumed",
+    "load_result": null
+  },
+  "swap": 0,
+  "serving_unchanged": true,
+  "model_input": "fixed synthetic token IDs only",
+  "speed_result": null,
+  "production_enabled": false
+}

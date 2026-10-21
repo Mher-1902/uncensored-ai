@@ -1,0 +1,11 @@
+{
+  "guard_passed": true,
+  "outside_marker_rejected": 3,
+  "syntax_checked": true,
+  "cpu": 0.1,
+  "ram_mib": 128,
+  "swap": 0,
+  "network": "none",
+  "root_readonly": true,
+  "inference_performed": false
+}
