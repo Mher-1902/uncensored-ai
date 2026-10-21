@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {BrowserEngine,BrowserEngineError} from '../src/engine.ts';
 
 const model=new Blob(['fixture model bytes']),prompt='Explain why the Earth has seasons.';
-const gpuLogs=['ggml_webgpu: Found adapter: fixture GPU','load_tensors: offloaded 25/25 layers to GPU'];
+const gpuLogs=['ggml_webgpu: adapter_info: vendor_id: 1 | vendor: PRIVATE FIXTURE | architecture: FIXTURE | device_id: 1 | name: fixture GPU | device_desc: FIXTURE','load_tensors: offloaded 25/25 layers to GPU'];
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}};
 const code=expected=>error=>error instanceof BrowserEngineError&&error.code===expected;
 const next=()=>new Promise(resolve=>setImmediate(resolve));
@@ -52,7 +52,7 @@ test('each fixed-prompt run creates and unloads a fresh GPU worker without model
 });
 
 test('GPU capability is insufficient: missing, partial, failed or unrecognized native evidence rejects before generation',async()=>{
-  for(const logs of [[],['WebGPU is available','load_tensors: offloaded 25/25 layers to GPU'],['ggml_webgpu: Found adapter: fixture GPU'],['ggml_webgpu: Found adapter: fixture GPU','load_tensors: offloaded 0/25 layers to GPU'],['ggml_webgpu: Found adapter: fixture GPU','load_tensors: offloaded 12/25 layers to GPU'],[...gpuLogs,'ggml_webgpu: error while creating device']]){
+  for(const logs of [[],['WebGPU is available','load_tensors: offloaded 25/25 layers to GPU'],['ggml_webgpu: Found adapter: fixture GPU'],['ggml_webgpu: Found adapter: fixture GPU','load_tensors: offloaded 0/25 layers to GPU'],['ggml_webgpu: Found adapter: fixture GPU','load_tensors: offloaded 12/25 layers to GPU'],[...gpuLogs,'ggml_webgpu: error while creating device'],[...gpuLogs,'ggml_webgpu: Device lost! Reason: 1'],[...gpuLogs,'ggml_webgpu: event_synchronize timed out after 5000 ms']]){
     let fixture;const engine=new BrowserEngine(logger=>(fixture=mockRuntime(logger,{logs})).runtime);
     await assert.rejects(engine.run(model,prompt,options()),code('gpu_unverified'));
     assert.equal(fixture.state.loads.length,1);assert.equal(fixture.state.requests.length,0);assert.equal(fixture.state.exits,1);

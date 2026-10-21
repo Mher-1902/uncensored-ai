@@ -96,10 +96,13 @@ export class BrowserEngine {
       if(!this.current(run)||run.phase!=='loading')return;
       for(const value of data)if(typeof value==='string'&&value.length<=8192)for(const raw of value.split('\n')){
         const line=raw.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g,'').trim();
+        // This exact prefix is present in the pinned 3.8.1 WASM. Its values
+        // are discarded; do not retain vendor/device identifiers.
+        if(/^ggml_webgpu:\s+adapter_info:/i.test(line))webgpu=true;
         if(/^(?:ggml_webgpu|ggml_backend_webgpu(?:_\w+)?):/i.test(line)&&/\b(?:adapter|device|backend|buffer|memory)\b/i.test(line))webgpu=true;
         if(/^(?:llama_model_load_from_file_impl|llama_model_load):\s+using device WebGPU\d*\b/i.test(line))webgpu=true;
         if(/^(?:load_tensors|llama_model_load_tensors):\s+WebGPU\d*\s+(?:model\s+)?buffer\b/i.test(line))webgpu=true;
-        if(/^(?:ggml_webgpu|ggml_backend_webgpu(?:_\w+)?):/i.test(line)&&/\b(?:failed|unavailable|unsupported|error)\b/i.test(line))gpuFailure=true;
+        if(/^(?:ggml_webgpu|ggml_backend_webgpu(?:_\w+)?):/i.test(line)&&/\b(?:failed|unavailable|unsupported|error|lost|exhausted|timed out)\b/i.test(line))gpuFailure=true;
         const match=line.match(/^(?:load_tensors|llama_model_load_tensors):\s+offloaded\s+(\d+)\s*\/\s*(\d+)\s+layers to GPU\b/i);
         if(match){const loaded=Number(match[1]),total=Number(match[2]);if(loaded>0&&total>0&&loaded<=total&&total<10000){offloaded=loaded;totalLayers=total;}}
       }
