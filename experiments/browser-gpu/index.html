@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Offscript_ · Browser GPU prototype</title></head>
+<body><main>
+  <header><a class="brand" href="https://offscript-ai.vercel.app/" target="_blank" rel="noreferrer">offscript<span>_</span></a><span class="label">DEVICE LAB</span></header>
+  <h1>Your device. The same model.</h1>
+  <p class="intro">An optional browser GPU experiment. First we check compatibility, then you choose whether to download the model. The live website keeps using its existing server.</p>
+  <section aria-labelledby="device-title"><h2 id="device-title">1. Check this device</h2>
+    <p>Needs WebGPU, a compatible browser and several GB of available memory. A capability check does not prove this model will run or be faster.</p>
+    <button id="check">Check device</button><p id="device" role="status">Not checked. No model has been downloaded.</p>
+  </section>
+  <section aria-labelledby="model-title"><h2 id="model-title">2. Choose the download</h2>
+    <p>HauhauCS Qwen3.5 2B · Aggressive · Q4_K_M. Exactly the checkpoint and model bytes selected for Offscript, with no substitute model.</p>
+    <label class="consent"><input id="consent" type="checkbox"> I choose to download and save the 1.3 GB model on this device. This uses my bandwidth and device storage.</label>
+    <div class="actions"><button id="download" disabled>Download model · 1.3 GB</button><button id="saved" disabled>Use saved model</button><button id="remove">Remove saved model</button></div>
+    <p class="small">Only model weights are saved in a dedicated browser folder. Test text stays in this page’s memory. Hugging Face and its download CDN receive ordinary network data when you download; no account credentials or chat text are sent to them by this prototype.</p>
+    <progress id="progress" max="100" value="0" aria-label="Model download or verification progress"></progress>
+    <p id="model" role="status">No model selected.</p>
+  </section>
+  <section aria-labelledby="test-title"><h2 id="test-title">3. Measure before switching</h2>
+    <p>These fixed general and coding questions measure this device. No prompts are sent to the Samsung. Every run uses a new worker and unloads it afterward. Missing GPU execution evidence fails the test.</p>
+    <div class="actions"><button id="general" disabled>Test general answer</button><button id="coding" disabled>Test coding answer</button><button id="stop" disabled>Stop / unload</button><button id="clear">Clear test output</button></div>
+    <p id="status" role="status" aria-live="polite">Ready to check your device.</p>
+    <pre id="answer" aria-label="Synthetic test answer"></pre>
+    <dl id="metrics" aria-label="Test measurements"></dl>
+    <p class="small">This is a preparation prototype, not an enabled website mode. Compatibility, output quality, sustained speed and battery use still need real device testing. This fixed test allows at most 128 output tokens; a length stop is reported as incomplete. It does not change the live website’s reply limits.</p>
+  </section>
+</main><script type="module" src="/src/main.ts"></script></body></html>
