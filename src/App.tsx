@@ -11,6 +11,7 @@ import {HeroArt} from './HeroArt';
 import {WelcomeDialog} from './Welcome';
 import {PRIVACY_PATH} from './Privacy';
 import {CookieNotice,CookieDialog} from './CookieNotice';
+import {SessionExpiredError} from './session';
 
 function CopyReply({text}:{text:string}){
   const [label,setLabel]=useState('Copy reply');
@@ -31,10 +32,15 @@ export function App(){
   const pilot=usePilotControls(config,account.session?.user.id,account.accessToken);
   useEffect(()=>{if(!account.session)setPilotOpen(false)},[account.session?.user.id]);
   useEffect(()=>{if(account.recovery)setAccountOpen(true)},[account.recovery]);
-  const input=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null),scroller=useRef<HTMLDivElement>(null),follow=useRef(true),generation=useRef(0);
+  const input=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null),scroller=useRef<HTMLDivElement>(null),follow=useRef(true),generation=useRef(0),conversationOwner=useRef<string|null>(null);
   useEffect(()=>{let disposed=false;loadConfig().then(c=>{if(!disposed)setConfig(c)}).catch(e=>{if(!disposed)setConfigError(e.message)});return()=>{disposed=true}},[]);
   const erase=useEffectEvent(()=>{generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setError('');setBusy(false);setStatus('')});
-  useEffect(()=>{if(config?.requireAuth&&!account.loading&&!account.session)erase()},[config?.requireAuth,account.loading,account.session]);
+  useEffect(()=>{
+    const user=account.session?.user.id;
+    // Expiry must not discard a partial answer or separately typed draft.
+    // Explicit sign-out still clears immediately; another account clears too.
+    if(user){if(conversationOwner.current&&conversationOwner.current!==user)erase();conversationOwner.current=user;}
+  },[account.session?.user.id]);
   useEffect(()=>{const leave=()=>erase();const restore=(event:PageTransitionEvent)=>{if(event.persisted)erase()};window.addEventListener('pagehide',leave);window.addEventListener('pageshow',restore);return()=>{window.removeEventListener('pagehide',leave);window.removeEventListener('pageshow',restore);controller.current?.abort()}},[]);
   useEffect(()=>{if(input.current){input.current.style.height='auto';input.current.style.height=`${Math.min(input.current.scrollHeight,180)}px`}},[draft]);
   useEffect(()=>{if(follow.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight},[messages,status]);
@@ -49,7 +55,8 @@ export function App(){
   async function beginReply(question:string,deep:boolean,retry?:NonNullable<ReturnType<typeof retryTurn>>){
     if(!question||busy)return;
     if(!config||(!config.space&&!config.apiBase)){setError('The website is live. Its model server is not connected yet. No message was sent.');return}
-    if(config.requireAuth&&!account.session){setAccountOpen(true);return}
+    if(config.requireAuth&&(!account.session||account.needsSignIn)){setAccountOpen(true);return}
+    if(account.session&&conversationOwner.current&&conversationOwner.current!==account.session.user.id){erase();return}
     if(config.accountControl&&(pilot.loading||pilot.error||!canUsePilot(pilot.data,deep))){setPilotOpen(true);return}
     const current=++generation.current,ctrl=new AbortController();controller.current=ctrl;setBusy(true);setError('');setDraft(value=>value.trim()===question?'':value);setStatus('Preparing a reply…');follow.current=true;
     const user:Message=retry?.question||{id:crypto.randomUUID(),role:'user',content:question,complete:true};
@@ -58,11 +65,10 @@ export function App(){
     setMessages(retry?[...messages.slice(0,-1),answer]:[...messages,user,answer]);let finalText='',frame=0;
     const flush=()=>{frame=0;if(current===generation.current)startTransition(()=>setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText}:x)))};
     try{
-      const accessToken=config.requireAuth?await account.accessToken():null;
-      await reply(config,outgoing,deep,ctrl.signal,text=>{if(current!==generation.current)return;finalText=text;if(!frame)frame=requestAnimationFrame(flush)},text=>{if(current===generation.current){setStatus(text)}},accessToken);
+      await reply(config,outgoing,deep,ctrl.signal,text=>{if(current!==generation.current)return;finalText=text;if(!frame)frame=requestAnimationFrame(flush)},text=>{if(current===generation.current){setStatus(text)}},config.requireAuth||config.accountControl?account.chatSession:null);
       if(!finalText.trim())throw Error('No answer was received. Please try again.');
       if(current===generation.current)setMessages(m=>settleAnswer(m,answer.id,finalText,'complete'));
-    }catch(e){if(current===generation.current&&!ctrl.signal.aborted){setError((e as Error).message);setMessages(m=>settleAnswer(m,answer.id,finalText,'interrupted'));if(!finalText)setDraft(value=>restoreQuestion(value,question))}}
+    }catch(e){if(current===generation.current&&!ctrl.signal.aborted){if(e instanceof SessionExpiredError)account.requireSignIn();setError((e as Error).message);setMessages(m=>settleAnswer(m,answer.id,finalText,'interrupted'));if(!finalText)setDraft(value=>restoreQuestion(value,question))}}
     finally{cancelAnimationFrame(frame);if(current===generation.current){if(ctrl.signal.aborted){setMessages(m=>settleAnswer(m,answer.id,finalText,'stopped'));if(!finalText)setDraft(value=>restoreQuestion(value,question))}setBusy(false);setStatus('');controller.current=null;input.current?.focus();if(config.accountControl)void pilot.refresh()}}
   }
   function stop(event:React.MouseEvent<HTMLButtonElement>){event.preventDefault();controller.current?.abort();setStatus('Stopping…')}
@@ -70,11 +76,11 @@ export function App(){
   const active=messages.length>0;
   return <div className={`shell ${active?'in-chat':''}`}>
     <a className="skip-link" href="#composer">Skip to message</a>
-    <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session?(config.accountControl?<button className="account-button" onClick={()=>setPilotOpen(true)}>Account</button>:<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>):<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
+    <header className="topbar"><a className="wordmark" href="/" aria-label="Offscript home">offscript<span>_</span></a><div className="header-actions">{config?.requireAuth&&(account.session&&!account.needsSignIn?(config.accountControl?<button className="account-button" onClick={()=>setPilotOpen(true)}>Account</button>:<button className="account-button" onClick={()=>void signOut()} disabled={signingOut}>{signingOut?'Signing out…':'Sign out'}</button>):<button className="account-button" onClick={()=>{setAccountOpen(true)}}>Sign in</button>)}<span className="ephemeral"><span/> TEMPORARY BY DESIGN</span>{active&&<button className="reset" onClick={clear} aria-label="Clear chat"><RotateCcw size={15}/><span>Clear chat</span></button>}</div></header>
     <main>
       {!active?<section className="hero" aria-labelledby="brand"><HeroArt/><div className="hero-copy"><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:m.state==='streaming'?<WaitingReply/>:null}</div>{m.role==='assistant'&&m.state!=='streaming'&&<div className="reply-actions">{(m.state==='stopped'||m.state==='interrupted')&&<span className="reply-outcome">{m.state==='stopped'?'Stopped':m.content?'Reply interrupted':'No answer received'}</span>}{!busy&&retryTurn(messages,m.id)&&<button className="retry-reply" onClick={()=>void retry(m.id)}><RotateCcw size={13}/>Retry answer</button>}{m.content&&<CopyReply text={m.content}/>}</div>}</article>)}</div></div>}
       <div className="composer-zone">
-        {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span><button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
+        {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span>{account.needsSignIn&&<button type="button" className="account-button" onClick={()=>setAccountOpen(true)}>Sign in</button>}<button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
         <form className="composer" onSubmit={send}>
           <label className="sr-only" htmlFor="composer">Message Offscript</label>
           <textarea id="composer" ref={input} placeholder="Ask anything. Go off script." value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>

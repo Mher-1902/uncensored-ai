@@ -87,7 +87,7 @@ test('bridge requires a user session and replaces it with the Samsung service cr
   const bridge=createBridge({env,verify:async token=>{if(token!=='Bearer valid-user')throw Error('Invalid session.');},fetchImpl:async(url,options)=>{
     calls++;assert.equal(url.href,'https://server.test/api/chat');assert.equal(options.headers.Authorization,`Bearer ${env.SAMSUNG_GATEWAY_TOKEN}`);return sse();
   }});
-  assert.equal((await bridge(request())).status,401);assert.equal(calls,0);
+  const rejected=await bridge(request());assert.equal(rejected.status,401);assert.equal((await rejected.json()).code,'session_required');assert.equal(calls,0);
   const response=await bridge(request({headers:{...headers,Authorization:'Bearer valid-user'}}));
   assert.equal(response.status,200);assert.match(await response.text(),/\[DONE\]/);assert.equal(calls,1);
 });
@@ -152,4 +152,15 @@ test('proxy timeouts abort upstream requests and redact failures and response he
   const unsafe=await forward(request(),'https://private.test','api/chat',{fetchImpl:async()=>new Response('<html>error</html>',{status:500,headers:{'Set-Cookie':'secret=value'}})});
   assert.equal(unsafe.status,502);assert.equal(unsafe.headers.get('set-cookie'),null);assert.doesNotMatch(await unsafe.text(),/html/);
   const wrongType=await forward(request(),'https://private.test','api/chat',{fetchImpl:async()=>Response.json({ready:true})});assert.equal(wrongType.status,502);
+});
+
+test('only the managed JWT gate exposes a safe-to-refresh rejection through the public binding',async()=>{
+  let nativeCalls=0;
+  const bridge=createBridge({env,verify:async()=>{throw Error('expired')},fetchImpl:async()=>{nativeCalls++;return sse()}});
+  const app=createAppHandler('/api/chat',{env:{GATEWAY_URL:'https://internal.test'},fetchImpl:async(url,options)=>bridge(new Request(url,options))});
+  const result=await app(request());assert.equal(result.status,401);
+  assert.deepEqual(await result.json(),{error:'Sign in before sending a message.',code:'session_required'});assert.equal(nativeCalls,0);
+  const nativeRejected=createBridge({env,verify:async()=>{},fetchImpl:async()=>Response.json({code:'session_required',error:'private service details'},{status:401})});
+  const rejected=await nativeRejected(request());assert.equal(rejected.status,401);
+  const body=await rejected.json();assert.equal(body.code,undefined);assert.doesNotMatch(JSON.stringify(body),/private service details/);
 });

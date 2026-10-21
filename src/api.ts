@@ -1,5 +1,6 @@
 export type Message = { id:string; role:'user'|'assistant'; content:string; complete?:boolean; state?:'streaming'|'complete'|'stopped'|'interrupted'; questionId?:string; reasoned?:boolean };
 import {readEvents} from './stream.ts';
+import {sessionReader,SessionExpiredError,type SessionSource} from './session.ts';
 export type AuthConfig = {url:string; publishableKey:string; providers:('google'|'github')[]; emailEnabled:boolean};
 export type SiteConfig = { space:string|null; apiBase:string|null; model:string; modelUrl:string; requireAuth?:boolean; auth?:AuthConfig|null; accountControl?:boolean; fastReplyTokens?:256|512 };
 export async function loadConfig():Promise<SiteConfig>{
@@ -54,12 +55,14 @@ export async function checkModel(config:SiteConfig):Promise<boolean>{
 }
 // Each segment has its own request deadline. The next segment continues the
 // actual assistant prefix; no synthetic user turn or durable chat is created.
-export async function reply(config:SiteConfig,messages:Message[],reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void,accessToken?:string|null){
+export async function reply(config:SiteConfig,messages:Message[],reasoned:boolean,signal:AbortSignal,onText:(text:string)=>void,onStatus:(text:string)=>void,accessToken?:SessionSource){
   if(!config.apiBase){if(config.space){await cloudReply(config.space,messages,1024,signal,onText,onStatus);return}throw Error('The model is not connected yet. No message was sent.')}
-  if((config.requireAuth||config.accountControl)&&!accessToken)throw Error('Sign in before sending a message.');
-  if(accessToken&&new URL(config.apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
-  const headers:Record<string,string>={'Content-Type':'application/json','X-Offscript-Client':'web'};
-  if(accessToken)headers.Authorization=`Bearer ${accessToken}`;
+  const apiBase=config.apiBase;
+  const credentials=sessionReader(accessToken,Boolean(config.requireAuth||config.accountControl));
+  function authHeaders(token:string|null):Record<string,string> {
+    if(token&&new URL(apiBase,location.origin).origin!==location.origin)throw Error('Account requests must use this website’s own API.');
+    return {'Content-Type':'application/json','X-Offscript-Client':'web',...(token?{Authorization:`Bearer ${token}`}:{})};
+  }
   const validId=(value:unknown):value is string=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   let text='',answerId:string|null=null,receipt:string|null=null,completed=false;
   try {
@@ -71,7 +74,23 @@ export async function reply(config:SiteConfig,messages:Message[],reasoned:boolea
     const deep=reasoned&&!continuation;
     if(config.accountControl&&continuation&&(!answerId||!receipt))throw Error('The answer could not be continued safely. The text received so far is kept.');
     const maxTokens=!deep&&config.fastReplyTokens===512?512:256;
-    const response=await fetch(`${config.apiBase}/chat`,{method:'POST',headers,body:JSON.stringify({messages:history,maxTokens,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(config.accountControl?{answerId,receipt}:{})}:{})}),signal,cache:'no-store'});
+    const body=JSON.stringify({messages:history,maxTokens,mode:deep?'deep':'fast',reasoned:deep,...(continuation?{continuation:true,...(config.accountControl?{answerId,receipt}:{})}:{})});
+    let response:Response;
+    for(let attempt=0;;attempt++) {
+      // A long answer can outlive its original JWT. Resolve the current token
+      // for every segment and recheck Stop after the asynchronous lookup.
+      const token=await credentials.token(attempt===1,signal);
+      response=await fetch(`${apiBase}/chat`,{method:'POST',headers:authHeaders(token),body,signal,cache:'no-store'});
+      if(response.status!==401)break;
+      const rejection=await response.json().catch(()=>null);
+      // Only the explicit JWT gate runs before admission/generation. Never
+      // replay a failed stream or an ambiguous service-authentication error.
+      if(rejection?.code==='session_required') {
+        if(attempt===0&&credentials.canRefresh)continue;
+        throw new SessionExpiredError();
+      }
+      throw Error(rejection?.error||'The model could not authenticate this request. Please try again.');
+    }
     if(!response.ok){
       const body=await response.json().catch(()=>null);
       if(response.status===422)throw Error('This conversation has filled the model context. Your answer so far is kept; start a new chat for another question.');
@@ -124,7 +143,10 @@ export async function reply(config:SiteConfig,messages:Message[],reasoned:boolea
       // This signal is independent of Stop, including the gap between segments.
       // It carries only the opaque answer ID, never conversation text.
       try {
-        const cancellation=await fetch(`${config.apiBase}/answer/cancel`,{method:'POST',headers,body:JSON.stringify({answerId}),signal:AbortSignal.timeout(30000),cache:'no-store',keepalive:true});
+        // Stop has its own signal, but cancellation must still use a current
+        // token for the same account that started the answer.
+        const cancellationSignal=AbortSignal.timeout(30000),token=await credentials.token(false,cancellationSignal);
+        const cancellation=await fetch(`${apiBase}/answer/cancel`,{method:'POST',headers:authHeaders(token),body:JSON.stringify({answerId}),signal:cancellationSignal,cache:'no-store',keepalive:true});
         await cancellation.body?.cancel();
       }catch{/* The server retains uncertain work for reconciliation. */}
     }

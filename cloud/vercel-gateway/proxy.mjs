@@ -43,7 +43,7 @@ export async function bodyJSON(request, signal = request.signal) {
   return JSON.parse((await bodyBytes(request, signal)).toString('utf8'));
 }
 
-export async function forward(request, base, route, {headers = {}, fetchImpl = fetch, timeoutMs = 270000} = {}) {
+export async function forward(request, base, route, {headers = {}, fetchImpl = fetch, timeoutMs = 270000, sessionRejection = false} = {}) {
   const controller = new AbortController();
   const abort = () => controller.abort();
   request.signal.addEventListener('abort', abort, {once: true});
@@ -61,6 +61,9 @@ export async function forward(request, base, route, {headers = {}, fetchImpl = f
       if(upstream.headers.get('content-type')?.split(';',1)[0]==='application/json') {
         try {
           const value=await bodyJSON(upstream,controller.signal);
+          if(sessionRejection && upstream.status===401 && value?.code==='session_required') {
+            cleanup();return json(401,{error:'Sign in before sending a message.',code:'session_required'});
+          }
           if(upstream.status===503 && value?.code==='model_busy') {
             cleanup();return json(503,{error:'The model is busy. Please try again in a moment.',code:'model_busy'});
           }

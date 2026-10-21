@@ -3,6 +3,7 @@ import type {Session, SupabaseClient} from '@supabase/supabase-js';
 import {X} from 'lucide-react';
 import type {AuthConfig} from './api';
 import {PrivacyContent,PRIVACY_PATH} from './Privacy';
+import {accountSessionProvider} from './session';
 
 export function useAccount(config: AuthConfig | null | undefined) {
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -10,10 +11,11 @@ export function useAccount(config: AuthConfig | null | undefined) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recovery, setRecovery] = useState(false);
+  const [needsSignIn,setNeedsSignIn]=useState(false);
   const [welcomeUser,setWelcomeUser]=useState<string|null>(null);
   const welcomedUser=useRef<string|null>(null);
   useEffect(() => {
-    setClient(null); setSession(null); setError(''); setRecovery(false); setLoading(false);setWelcomeUser(null);welcomedUser.current=null;
+    setClient(null); setSession(null); setError(''); setRecovery(false); setLoading(false);setWelcomeUser(null);welcomedUser.current=null;setNeedsSignIn(false);
     if (!config) return;
     let disposed = false, cleanup = () => {};
     setLoading(true);
@@ -25,6 +27,7 @@ export function useAccount(config: AuthConfig | null | undefined) {
       const {data: {subscription}} = instance.auth.onAuthStateChange((event, value) => {
         if (disposed) return;
         setSession(value);
+        if(event==='SIGNED_IN'&&value)setNeedsSignIn(false);
         if(event==='SIGNED_IN'&&value&&welcomedUser.current!==value.user.id){welcomedUser.current=value.user.id;setWelcomeUser(value.user.id)}
         if (event === 'PASSWORD_RECOVERY') setRecovery(true);
         if (event === 'SIGNED_OUT') {setRecovery(false);setWelcomeUser(null);welcomedUser.current=null;}
@@ -40,13 +43,9 @@ export function useAccount(config: AuthConfig | null | undefined) {
     }).catch(() => {if (!disposed) {setError('Sign-in is unavailable. Please try again.'); setLoading(false);}});
     return () => {disposed = true; cleanup();};
   }, [config?.url, config?.publishableKey]);
-  async function accessToken() {
-    if (!client) return null;
-    const {data, error: failure} = await client.auth.getSession();
-    if (failure) throw Error('Your session expired. Please sign in again.');
-    return data.session?.access_token || null;
-  }
-  return {client, session, loading, error, recovery, setRecovery, accessToken, providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&welcomeUser===session.user.id),dismissWelcome:()=>setWelcomeUser(null)};
+  const chatSession=accountSessionProvider(client?.auth||null,session?.user.id);
+  async function accessToken(){return (await chatSession())?.accessToken||null;}
+  return {client, session, loading, error, recovery, setRecovery, accessToken,chatSession,needsSignIn,requireSignIn:()=>setNeedsSignIn(true), providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&!needsSignIn&&welcomeUser===session.user.id),dismissWelcome:()=>setWelcomeUser(null)};
 }
 
 type Account = ReturnType<typeof useAccount>;
@@ -62,7 +61,7 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
     else {dialog.current?.close(); attempt.current++; setPassword(''); setError(''); setNotice(''); setPending(false);}
   }, [open]);
   useEffect(() => {if (account.recovery) setMode('password');}, [account.recovery]);
-  useEffect(() => {if (open && account.session && !account.recovery && (mode === 'signin' || mode === 'signup')) onClose();}, [open, account.session, account.recovery, mode, onClose]);
+  useEffect(() => {if (open && account.session && !account.needsSignIn && !account.recovery && (mode === 'signin' || mode === 'signup')) onClose();}, [open, account.session, account.needsSignIn, account.recovery, mode, onClose]);
   function choose(value: Mode) {attempt.current++; setPending(false); setPassword(''); setError(''); setNotice(''); setMode(value);}
   function close() {attempt.current++; setPassword(''); onClose();}
   async function submit(event: React.FormEvent) {
@@ -109,6 +108,7 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
   return <dialog className="account-dialog" ref={dialog} aria-labelledby="account-title" onCancel={close} onClick={event => {if (event.target === event.currentTarget) close();}}>
     <div className="dialog-heading"><h2 id="account-title">{title}</h2><button className="icon-button" type="button" aria-label="Close account form" onClick={close}><X size={21}/></button></div>
     <p>{mode === 'signup' ? 'Create an account for temporary conversations.' : mode === 'reset' ? 'We’ll send a link to the email address on your account.' : mode === 'password' ? 'Use a unique password with at least 12 characters.' : 'Sign in or create an account with a provider below.'}</p>
+    {account.needsSignIn&&<p role="status">Your session expired. Your reply stays on this page until you leave or reload. Copy anything you need before continuing to sign in.</p>}
     {(mode==='signin'||mode==='signup')&&<section className="signup-privacy" aria-labelledby="signup-privacy-title"><h3 id="signup-privacy-title">Your account stays. Chats don’t.</h3><p>Your provider shares sign-in and profile details. Messages are processed to answer you, without a saved chat history. Infrastructure providers may keep operational records.</p><details><summary>Read the Privacy Policy</summary><PrivacyContent/><a href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Open Privacy Policy in a new tab ↗</a></details><p className="muted">Signing in does not subscribe you to marketing or a paid plan.</p></section>}
     {account.error && <p className="account-error" role="alert">{account.error}</p>}
     {!account.client ? <p role="status">{account.loading ? 'Preparing sign-in…' : 'Account setup is not ready yet. Please check back soon.'}</p> : <>
