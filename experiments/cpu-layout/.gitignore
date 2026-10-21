@@ -1,0 +1,4 @@
+output/
+*.gguf
+*.partial
+__pycache__/

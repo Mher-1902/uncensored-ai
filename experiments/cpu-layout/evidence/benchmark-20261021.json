@@ -1,0 +1,58 @@
+{
+  "samples": [
+    {
+      "first_text_s": 4.030201541958377,
+      "total_s": 28.83765357802622,
+      "output_tokens": 96,
+      "prompt_tokens": 29,
+      "decode_tokens_s": 3.8297342359908337,
+      "natural_stop": false,
+      "synthetic_output": "The Earth's seasons are caused by its elliptical orbit around the Sun, which means the distance between the Earth and the Sun varies throughout the year. As the Earth orbits, the angle at which sunlight strikes its surface changes, creating a cycle of seasons. During the Northern Hemisphere's summer, the North Pole tilts toward the Sun, resulting in longer days and more direct sunlight. Conversely, in winter, the North Pole tilts away, leading to shorter days and less direct sunlight",
+      "memory_peak_mib": 207.29296875,
+      "engine": "baseline",
+      "kind": "general"
+    },
+    {
+      "first_text_s": 4.706940152915195,
+      "total_s": 31.634046613937244,
+      "output_tokens": 96,
+      "prompt_tokens": 29,
+      "decode_tokens_s": 3.528361970444269,
+      "natural_stop": false,
+      "synthetic_output": "The Earth's seasons are caused by its tilted axis, which remains fixed in space as it orbits the Sun.\nBecause of this tilt, different parts of the planet receive varying amounts of direct sunlight throughout the year.\nWhen the Northern Hemisphere tilts toward the Sun, it experiences summer while the Southern Hemisphere experiences winter.\nConversely, when the Southern Hemisphere tilts toward the Sun, it experiences summer while the Northern Hemisphere experiences winter.\nThe changing angle of sunlight also",
+      "memory_peak_mib": 682.09375,
+      "engine": "candidate",
+      "kind": "general"
+    },
+    {
+      "first_text_s": 5.477437367895618,
+      "total_s": 9.45690452598501,
+      "output_tokens": 16,
+      "prompt_tokens": 43,
+      "decode_tokens_s": 4.055790882859442,
+      "natural_stop": true,
+      "synthetic_output": "def is_even(n):\n    return n % 2 == 0",
+      "memory_peak_mib": 208.4609375,
+      "engine": "baseline",
+      "kind": "code"
+    },
+    {
+      "first_text_s": 6.775501067982987,
+      "total_s": 12.439276307006367,
+      "output_tokens": 21,
+      "prompt_tokens": 43,
+      "decode_tokens_s": 3.724626300846009,
+      "natural_stop": true,
+      "synthetic_output": "```python\ndef is_even(n):\n    return n % 2 == 0\n```",
+      "memory_peak_mib": 210.35546875,
+      "engine": "candidate",
+      "kind": "code"
+    }
+  ],
+  "peak_celsius": 69.0,
+  "serving_unchanged": true,
+  "candidate_sha256": "17fcebac434f445908a072166231e32663472f1b26be4afb1e9ff0d09f667cea",
+  "model_activated": false,
+  "quality_gate_complete": false,
+  "note": "Small fixed synthetic CPU comparison only. Does not establish capacity, sustained performance or production readiness."
+}

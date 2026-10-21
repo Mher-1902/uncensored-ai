@@ -1,0 +1,10 @@
+{
+  "selected_source_sha256": "be3ccca13a9d1bc8b67165ea80bd103cd6151a37ad131183cc7ca388f78d9517",
+  "bf16_source_sha256": "d98cff5f907e2186ac8243ac5676a47dc24e1822cd6ed674c9c92c7503915a1b",
+  "candidate_sha256": "17fcebac434f445908a072166231e32663472f1b26be4afb1e9ff0d09f667cea",
+  "source_repository": "HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive",
+  "source_revision": "2bcf35c1ebf62c837c12c1aa90b578ff4717e831",
+  "quantizer_source_revision": "0504396140d1c882f5f6ee34466a42db7ae90114",
+  "quantizer_sha256": "e48ccc3b8f05e0b7bf3507f40acf0a1f68089bd0562b76b77c2aeeb6028f7a65",
+  "production_enabled": false
+}
