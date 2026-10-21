@@ -3,15 +3,15 @@ import {X} from 'lucide-react';
 import {CookiesContent,COOKIES_PATH} from './Cookies';
 import {noticeDismissed,dismissNotice} from './storage-notice';
 
-function tabStorage(){try{return window.sessionStorage}catch{return undefined}}
+function browserStorage(){try{return window.localStorage}catch{return undefined}}
 export function CookieNotice({onDetails,onDismiss}:{onDetails:()=>void;onDismiss:()=>void}){
   const [visible,setVisible]=useState(false);
-  useEffect(()=>setVisible(!noticeDismissed(tabStorage())),[]);
+  useEffect(()=>setVisible(!noticeDismissed(browserStorage())),[]);
   if(!visible)return null;
-  function dismiss(){dismissNotice(tabStorage());setVisible(false);onDismiss()}
+  function dismiss(){dismissNotice(browserStorage());setVisible(false);onDismiss()}
   return <aside className="storage-notice" aria-labelledby="storage-notice-title">
-    <div><h2 id="storage-notice-title">Just the essentials.</h2><p>We use browser storage for sign-in and this notice. No analytics or advertising tags.</p><button className="notice-details" type="button" onClick={onDetails}>Cookies &amp; storage details</button></div>
-    <button type="button" className="notice-dismiss" onClick={dismiss}>Got it</button>
+    <div><h2 id="storage-notice-title">Just the essentials.</h2><p>We use browser storage for sign-in and this notice. No analytics or advertising tags.</p><button className="notice-details" type="button" onClick={onDetails}>Cookies &amp; storage details</button><p id="storage-notice-memory">Remembered on this browser for 180 days when storage is available.</p></div>
+    <button type="button" className="notice-dismiss" aria-describedby="storage-notice-memory" onClick={dismiss}>Got it</button>
   </aside>;
 }
 
