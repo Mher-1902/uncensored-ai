@@ -20,7 +20,7 @@ test('signed-in client sends its session only to the same-origin API and preserv
 });
 test('missing sign-in leaves authenticated chat unsent',async t=>{
   let calls=0;t.mock.method(globalThis,'fetch',()=>{calls++;throw Error('No request expected.');});
-  await assert.rejects(reply({apiBase:'/api',space:null,requireAuth:true},message,false,new AbortController().signal,()=>{},()=>{}),/Sign in/);
+  await assert.rejects(reply({apiBase:'/api',space:null,requireAuth:true},message,false,new AbortController().signal,()=>{},()=>{}),/session expired/);
   assert.equal(calls,0);
 });
 test('an account session is never sent to a separately configured model origin',async t=>{
@@ -144,4 +144,70 @@ test('account-controlled streams reject a changed answer identity and cannot sen
   });
   await assert.rejects(reply(gated,message,false,new AbortController().signal,()=>{},()=>{},'dummy-session'),/verified/);assert.equal(cancels,1);
   await assert.rejects(reply({...gated,apiBase:'https://foreign.test/api'},message,false,new AbortController().signal,()=>{},()=>{},'dummy-session'),/own API/);
+});
+
+test('long answers read the current session before each segment',async t=>{
+  location(t);let token='old-token';const sent=[],updates=[];
+  t.mock.method(globalThis,'fetch',async(_url,options)=>{
+    sent.push(options.headers.Authorization);
+    if(sent.length===1){token='renewed-token';return event('First ','length')}
+    return event('complete','stop');
+  });
+  await reply({...gated,accountControl:false},message,false,new AbortController().signal,v=>updates.push(v),()=>{},async()=>({accessToken:token,userId:'account-a'}));
+  assert.deepEqual(sent,['Bearer old-token','Bearer renewed-token']);assert.equal(updates.at(-1),'First complete');
+});
+test('an explicit pre-admission JWT rejection refreshes and retries only the rejected segment once',async t=>{
+  location(t);const sent=[],resolves=[];let token='initial';
+  t.mock.method(globalThis,'fetch',async(_url,options)=>{
+    sent.push({authorization:options.headers.Authorization,body:options.body});
+    if(sent.length===1)return event('Kept ','length');
+    if(sent.length===2)return Response.json({code:'session_required',error:'Sign in'},{status:401});
+    return event('complete','stop');
+  });
+  let text='';await reply({...gated,accountControl:false},message,false,new AbortController().signal,v=>{text=v},()=>{},async refresh=>{
+    resolves.push(refresh);if(refresh)token='new';return {accessToken:token,userId:'account-a'};
+  });
+  assert.deepEqual(resolves,[false,false,true]);assert.equal(sent.length,3);
+  assert.equal(sent[1].body,sent[2].body);assert.equal(sent[2].authorization,'Bearer new');assert.equal(text,'Kept complete');
+});
+test('repeated JWT rejection and ambiguous service rejection never loop or replay generated text',async t=>{
+  location(t);
+  for(const explicit of [true,false]) {
+    let calls=0,refreshes=0,text='';
+    const mock=t.mock.method(globalThis,'fetch',async()=>{
+      calls++;if(calls===1)return event('Partial ','length');
+      return Response.json({error:'Rejected',...(explicit?{code:'session_required'}:{})},{status:401});
+    });
+    await assert.rejects(reply({...gated,accountControl:false},message,false,new AbortController().signal,v=>{text=v},()=>{},async refresh=>{
+      if(refresh)refreshes++;return {accessToken:'fixture',userId:'account-a'};
+    }),explicit?/session expired/:/Rejected/);
+    assert.equal(calls,explicit?3:2);assert.equal(refreshes,explicit?1:0);assert.equal(text,'Partial ');mock.mock.restore();
+  }
+});
+test('an account switch cannot receive a continuation or cancellation for the prior account',async t=>{
+  location(t);let userId='account-a',calls=0,text='';
+  t.mock.method(globalThis,'fetch',async()=>{calls++;userId='account-b';return admittedEvent('Kept ','length',receipt)});
+  await assert.rejects(reply(gated,message,false,new AbortController().signal,v=>{text=v},()=>{},async()=>({accessToken:'fixture',userId})),/account changed/);
+  assert.equal(calls,1);assert.equal(text,'Kept ');
+});
+test('Stop during a forced refresh prevents a delayed chat retry',async t=>{
+  location(t);const controller=new AbortController();let calls=0,resolve;
+  t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:'session_required'},{status:401})});
+  const pending=new Promise(r=>{resolve=r});
+  const result=reply({...gated,accountControl:false},message,false,controller.signal,()=>{},()=>{},async refresh=>refresh?pending:{accessToken:'old',userId:'account-a'});
+  await new Promise(r=>setImmediate(r));controller.abort();await assert.rejects(result,{name:'AbortError'});
+  resolve({accessToken:'late',userId:'account-a'});await new Promise(r=>setImmediate(r));assert.equal(calls,1);
+});
+
+test('Stop settles metadata with the current same-account token, not the initial token',async t=>{
+  location(t);const controller=new AbortController();let token='before',chats=0,cancels=0;
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    if(url.endsWith('/answer/cancel')) {
+      cancels++;assert.equal(options.headers.Authorization,'Bearer after');assert.equal(options.signal.aborted,false);
+      assert.deepEqual(JSON.parse(options.body),{answerId});return Response.json({state:'finished'});
+    }
+    chats++;assert.equal(options.headers.Authorization,'Bearer before');token='after';return admittedEvent('Kept','length',receipt);
+  });
+  await assert.rejects(reply(gated,message,false,controller.signal,()=>controller.abort(),()=>{},async()=>({accessToken:token,userId:'account-a'})),{name:'AbortError'});
+  assert.equal(chats,1);assert.equal(cancels,1);
 });

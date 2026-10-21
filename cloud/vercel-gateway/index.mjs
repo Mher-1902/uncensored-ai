@@ -28,7 +28,9 @@ export function createBridge({env = process.env, fetchImpl = fetch, verify, acco
     let user;
     if (path !== '/api/health') {
       try { user=await verifier(request.headers.get('authorization')); }
-      catch { return json(401, {error: 'Sign in before sending a message.'}); }
+      // This code identifies rejection before admission or generation. Only
+      // this response is safe for the client to refresh and retry once.
+      catch { return json(401, {error: 'Sign in before sending a message.',code:'session_required'}); }
     }
     try {
       const enabled=accountControlEnabled(env);

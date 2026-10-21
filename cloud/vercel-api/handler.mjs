@@ -9,6 +9,6 @@ export function createAppHandler(path, {env = process.env, fetchImpl = fetch} = 
     const headers = {'X-Offscript-Client': 'web'};
     const authorization = request.headers.get('authorization');
     if (authorization) headers.Authorization = authorization;
-    return forward(request, env.GATEWAY_URL, path.slice(1), {headers, fetchImpl, timeoutMs: 280000});
+    return forward(request, env.GATEWAY_URL, path.slice(1), {headers, fetchImpl, timeoutMs: 280000, sessionRejection:true});
   };
 }
