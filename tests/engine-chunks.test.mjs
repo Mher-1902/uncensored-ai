@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
-import {createLlamaEngine} from '../server/llama-engine.mjs';
+import {createLlamaEngine,REPLY_GUIDANCE} from '../server/llama-engine.mjs';
 import {createGateway} from '../server/index.mjs';
 import {readEvents} from '../src/stream.ts';
 
@@ -49,7 +49,7 @@ test('one request reuses only its exact unfinished prefix and aggregates unique 
   const events=await answer(f),requests=generations(f);
   assert.equal(requests.length,2);assert.deepEqual(requests.map(r=>r.max_tokens),[2,2]);
   assert.ok(requests.every(r=>r.cache_prompt===true&&r.id_slot===0&&r.chat_template_kwargs.enable_thinking===false));
-  assert.deepEqual(requests[1].messages,[...input.messages,{role:'assistant',content:'Code:\n  '}]);
+  assert.deepEqual(requests[1].messages,[{role:'system',content:REPLY_GUIDANCE},...input.messages,{role:'assistant',content:'Code:\n  '}]);
   assert.equal(requests[1].continue_final_message,'content');assert.equal(requests[1].add_generation_prompt,false);
   assert.deepEqual(events.at(-2),{choices:[{delta:{},finish_reason:'stop'}],usage:{prompt_tokens:10,completion_tokens:3,total_tokens:13}});
   assert.equal(events.at(-1),'[DONE]');
@@ -68,6 +68,54 @@ test('a clamped final chunk stays within the original budget and preserves an ex
 test('a natural stop never starts another chunk',async()=>{
   const f=fixture([{text:'Done.',finish:'stop',tokens:1}]);
   assert.equal((await answer(f)).at(-2).choices[0].finish_reason,'stop');assert.equal(generations(f).length,1);
+});
+
+test('server guidance is accounted once and remains identical across preparation and continuation',async()=>{
+  const original=structuredClone(input),f=fixture([{text:'One '},{text:'answer.',finish:'stop',tokens:1}]);
+  await answer(f);
+  assert.deepEqual(input,original);
+  const templates=f.calls.filter(c=>c.path==='/apply-template').map(c=>c.body);
+  const requests=generations(f);
+  assert.equal(templates.length,2);
+  for(let i=0;i<requests.length;i++){
+    assert.deepEqual(templates[i].messages,requests[i].messages);
+    assert.deepEqual(requests[i].messages[0],{role:'system',content:REPLY_GUIDANCE});
+    assert.equal(requests[i].messages.filter(m=>m.role==='system').length,1);
+  }
+});
+
+test('server guidance consumes context before accepting or clamping a reply',async()=>{
+  const messages=[{role:'user',content:'Hello'}],templateBodies=[],tokenizerBodies=[];
+  // Character counts stand in for tokens to expose fixed server-prompt overhead
+  // without relying on a particular real tokenizer or making a model request.
+  const render=messages=>JSON.stringify(messages);
+  const fullPrompt=render([{role:'system',content:REPLY_GUIDANCE},...messages]);
+  const userPrompt=render(messages);
+  const fetchImpl=async(url,settings)=>{
+    const body=JSON.parse(settings.body);
+    if(new URL(url).pathname==='/apply-template'){
+      templateBodies.push(body);
+      return Response.json({prompt:render(body.messages)});
+    }
+    assert.equal(new URL(url).pathname,'/tokenize','Preparation must not generate a reply.');
+    tokenizerBodies.push(body);
+    return Response.json({tokens:Array(body.content.length).fill(1)});
+  };
+  const signal=new AbortController().signal;
+  const prepare=contextTokens=>createLlamaEngine({origin:'http://127.0.0.1:8081',fetchImpl,contextTokens})
+    .prepare({messages,maxTokens:256,mode:'fast'},signal);
+  assert.ok(fullPrompt.length+31-userPrompt.length>=256,'The user question alone would leave room for the requested reply.');
+  await assert.rejects(prepare(fullPrompt.length+31),error=>error.status===422);
+  assert.equal((await prepare(fullPrompt.length+40)).outputBudget,40);
+  assert.deepEqual(templateBodies.map(body=>body.messages),[
+    [{role:'system',content:REPLY_GUIDANCE},...messages],
+    [{role:'system',content:REPLY_GUIDANCE},...messages],
+  ]);
+  assert.deepEqual(tokenizerBodies,[
+    {content:fullPrompt,add_special:true},
+    {content:fullPrompt,add_special:true},
+  ]);
+  assert.deepEqual(messages,[{role:'user',content:'Hello'}]);
 });
 
 test('changed templates, invalid usage and incomplete streams cannot continue or report DONE',async()=>{
@@ -118,6 +166,6 @@ test('Stop during cached generation clears the exclusive slot before another use
   assert.ok(queued);assert.equal(generations(f).length,2);
   controller.abort();await cancelled;
   const text=await (await second).text();assert.match(text,/"content":"C"/);assert.match(text,/workerStopped":true/);assert.match(text,/\[DONE\]/);
-  assert.equal(generations(f)[2].messages.length,1);
+  assert.deepEqual(generations(f)[2].messages,[{role:'system',content:REPLY_GUIDANCE},...input.messages]);
   assert.deepEqual(f.calls.filter(c=>c.path.startsWith('/slots/')||c.path==='/v1/chat/completions').map(c=>c.path),['/slots/0','/v1/chat/completions','/v1/chat/completions','/slots/0','/slots/0','/v1/chat/completions','/slots/0']);
 });

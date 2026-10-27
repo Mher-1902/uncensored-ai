@@ -1,6 +1,8 @@
 // Engine-specific template, token accounting and request-state cleanup stay here.
 // A future vLLM adapter must implement these operations rather than emulate slots.
 import {chunkedAnswer} from './chunked-answer.mjs';
+export const REPLY_GUIDANCE = 'You are Offscript. Use the conversation to understand the latest question. Answer directly and concisely unless the user asks for detail. If an essential detail is missing, ask one focused question instead of guessing. State uncertainty; do not invent facts, device capabilities or instructions. You have no live web or device access.';
+const modelMessages = messages => [{role: 'system', content: REPLY_GUIDANCE}, ...messages];
 export class EngineError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
@@ -30,7 +32,7 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
       const continuationOptions = continuation ? {continue_final_message: 'content', add_generation_prompt: false} : {};
       const headers = {'Content-Type': 'application/json'};
       const template = await request('/apply-template', {method: 'POST', headers, signal,
-        body: JSON.stringify({messages, ...continuationOptions, chat_template_kwargs: {enable_thinking: reasoning}})});
+        body: JSON.stringify({messages: modelMessages(messages), ...continuationOptions, chat_template_kwargs: {enable_thinking: reasoning}})});
       if (!template.ok) throw new EngineError(502, 'Could not prepare the model prompt.');
       const {prompt} = await template.json();
       if (typeof prompt !== 'string') throw new EngineError(502, 'The model returned an invalid template.');
@@ -61,7 +63,7 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
   async function generateChunk({messages, reasoning, outputBudget, reasoningBudget, continuationOptions}, signal, reuse) {
       const result = await request('/v1/chat/completions', {method: 'POST', signal,
         headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-          model: 'offscript', messages, stream: true, stream_options: {include_usage: true},
+          model: 'offscript', messages: modelMessages(messages), stream: true, stream_options: {include_usage: true},
           ...continuationOptions,
           max_tokens: reuse?Math.min(chunkTokens,outputBudget):outputBudget, temperature: reasoning ? 0.6 : 0.7,
           top_p: reasoning ? 0.95 : 0.8, top_k: 20, min_p: 0,

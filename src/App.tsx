@@ -5,7 +5,7 @@ import {loadConfig,reply,type Message,type SiteConfig} from './api';
 import {AccountDialog,useAccount} from './account';
 import {PilotDialog,usePilotControls} from './pilot-controls';
 import {canUsePilot} from './pilot-api';
-import {completedHistory,restoreQuestion,retryTurn,settleAnswer} from './conversation';
+import {requestHistory,restoreQuestion,retryTurn,settleAnswer} from './conversation';
 import {AnswerMode} from './AnswerMode';
 import {HeroArt} from './HeroArt';
 import {WelcomeDialog} from './Welcome';
@@ -60,7 +60,7 @@ export function App(){
     if(config.accountControl&&(pilot.loading||pilot.error||!canUsePilot(pilot.data,deep))){setPilotOpen(true);return}
     const current=++generation.current,ctrl=new AbortController();controller.current=ctrl;setBusy(true);setError('');setDraft(value=>value.trim()===question?'':value);setStatus('Preparing a reply…');follow.current=true;
     const user:Message=retry?.question||{id:crypto.randomUUID(),role:'user',content:question,complete:true};
-    const outgoing=[...(retry?.history||completedHistory(messages)),user];
+    const outgoing=requestHistory(retry?.history??messages,user);
     const answer:Message={id:crypto.randomUUID(),role:'assistant',content:'',complete:false,state:'streaming',questionId:user.id,reasoned:deep};
     setMessages(retry?[...messages.slice(0,-1),answer]:[...messages,user,answer]);let finalText='',frame=0;
     const flush=()=>{frame=0;if(current===generation.current)startTransition(()=>setMessages(m=>m.map(x=>x.id===answer.id?{...x,content:finalText}:x)))};

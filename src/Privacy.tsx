@@ -1,10 +1,10 @@
 import {PRIVACY_PATH,COOKIES_PATH} from './legal-paths';
 export {PRIVACY_PATH} from './legal-paths';
-export const PRIVACY_VERSION='2026-10-21';
+export const PRIVACY_VERSION='2026-10-27';
 
 export function PrivacyContent(){
   return <div className="privacy-content">
-    <p className="privacy-version">Updated October 21, 2026. Version {PRIVACY_VERSION}.</p>
+    <p className="privacy-version">Updated October 27, 2026. Version {PRIVACY_VERSION}.</p>
     <p>Offscript is operated by Mher Sukiasyan, Armenia. For account or privacy requests, contact <a href="mailto:sukiasyanmher7@gmail.com">sukiasyanmher7@gmail.com</a>.</p>
     <p>This notice covers the Offscript website, accounts and temporary conversations. It explains how we handle information; it is not a release of responsibility for how the service operates.</p>
     <h2>Your account and sign-in</h2>
@@ -18,7 +18,6 @@ export function PrivacyContent(){
     <h2>Purpose, retention and your choices</h2>
     <p>We process account and message information to provide the service you request. Where applicable, the legal bases are performing that service, legitimate interests in proportionate security and operation, and legal obligations. Reading this notice does not consent to unrelated processing.</p>
     <p>If you contact us, we receive your email address and the information you send, and use it to respond to the request.</p>
-    <p>Our service providers may process technical records, such as IP addresses and request times, and may process information outside your country. We remain responsible for Offscript’s use of information. Provider terms and privacy notices describe how they handle their own records: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel</a>, <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase</a>, <a href="https://tailscale.com/privacy-policy" target="_blank" rel="noopener noreferrer">Tailscale</a> and your chosen sign-in provider (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub</a> or <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google</a>, when available).</p>
     <p>Account information, including the welcome-display preference, is kept while the account is in use, until a verified deletion request, subject to applicable legal or security requirements. Support messages are kept as needed to handle the request and associated issues. Provider security records and backups can follow different retention schedules. There is no saved chat archive for us to retrieve or restore.</p>
     <p>You can request access, correction or deletion of your account information using the contact above. We verify account ownership before taking action. Depending on applicable law, you may also have rights to restriction, objection, portability, withdrawal of consent where consent is used, and complaint to a data-protection authority. Do not email a password, verification code or unnecessary sensitive information.</p>
     <h2>Protecting information</h2>
