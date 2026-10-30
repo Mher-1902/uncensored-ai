@@ -39,6 +39,7 @@ export function App(){
   const input=useRef<HTMLTextAreaElement>(null),controller=useRef<AbortController|null>(null),scroller=useRef<HTMLDivElement>(null),follow=useRef(true),generation=useRef(0),conversationOwner=useRef<string|null>(null);
   const draftExpiry=useRef<ReturnType<typeof setTimeout>|null>(null);
   const draftNow=useRef(draft),modeNow=useRef(reasoned);draftNow.current=draft;modeNow.current=reasoned;
+  const accountOwnerNow=useRef(account.session?.user.id??null);accountOwnerNow.current=account.session?.user.id??null;
   useEffect(()=>()=>{if(draftExpiry.current!==null)clearTimeout(draftExpiry.current)},[]);
   useEffect(()=>{let disposed=false;loadConfig().then(c=>{if(!disposed)setConfig(c)}).catch(e=>{if(!disposed)setConfigError(e.message)});return()=>{disposed=true}},[]);
   const erase=useEffectEvent(()=>{generation.current++;controller.current?.abort();controller.current=null;draftNow.current='';setMessages([]);setDraft('');setDraftRecovered(false);setError('');setBusy(false);setStatus('')});
@@ -64,7 +65,7 @@ export function App(){
   useEffect(()=>{const leave=()=>erase();const restore=(event:PageTransitionEvent)=>{if(event.persisted){erase();restoreSignInDraft(true)}};window.addEventListener('pagehide',leave);window.addEventListener('pageshow',restore);return()=>{window.removeEventListener('pagehide',leave);window.removeEventListener('pageshow',restore);controller.current?.abort()}},[]);
   useEffect(()=>{if(input.current){input.current.style.height='auto';input.current.style.height=`${Math.min(input.current.scrollHeight,180)}px`}},[draft]);
   useEffect(()=>{if(follow.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight},[messages,status]);
-  function clear(){clearSignInDraft(draftStorage());draftNow.current='';conversationOwner.current=account.session?.user.id??null;generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setDraftRecovered(false);setError('');setBusy(false);setStatus('');input.current?.focus()}
+  function clear(){clearSignInDraft(draftStorage());draftNow.current='';conversationOwner.current=accountOwnerNow.current;generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setDraftRecovered(false);setError('');setBusy(false);setStatus('');input.current?.focus()}
   function preserveDraftForSignIn(){
     if(signingOut)throw Error('Sign-out is still finishing. Please try signing in again in a moment.');
     const storage=draftStorage();
