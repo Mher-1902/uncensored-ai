@@ -1,20 +1,22 @@
 import {PRIVACY_PATH,COOKIES_PATH} from './legal-paths';
 export {PRIVACY_PATH} from './legal-paths';
-export const PRIVACY_VERSION='2026-10-27';
+export const PRIVACY_VERSION='2026-10-30';
 
 export function PrivacyContent(){
   return <div className="privacy-content">
-    <p className="privacy-version">Updated October 27, 2026. Version {PRIVACY_VERSION}.</p>
+    <p className="privacy-version">Updated October 30, 2026. Version {PRIVACY_VERSION}.</p>
     <p>Offscript is operated by Mher Sukiasyan, Armenia. For account or privacy requests, contact <a href="mailto:sukiasyanmher7@gmail.com">sukiasyanmher7@gmail.com</a>.</p>
     <p>This notice covers the Offscript website, accounts and temporary conversations. It explains how we handle information; it is not a release of responsibility for how the service operates.</p>
     <h2>Your account and sign-in</h2>
     <p>We use Supabase to manage accounts. Your chosen sign-in provider shares your identity, email address and permitted profile information. We use this to create or authenticate your account and operate the service. Offscript does not receive your Google or GitHub password. Google sign-in is offered only when configured.</p>
     <p>After you dismiss the informational welcome, we save its display version with your account so it does not repeat at each sign-in, including on another device. This preference does not record agreement to Terms, consent to tracking or permission to charge you. If it cannot be saved, the welcome may appear again.</p>
     <h2>Your conversations</h2>
-    <p>Drafts and conversations stay in the current page’s memory. Messages pass through our website API to the model server to generate a reply. Offscript does not save a chat history, put messages into browser storage or its account database, or use conversations to build a model-training dataset. Request state is cleared after processing; canceling a reply initiates cleanup.</p>
+    <p>Conversations and drafts normally stay in the current page’s memory, with the narrow sign-in draft recovery exception below. Messages you send pass through our website API to the model server to generate a reply. Offscript does not save conversation history or answers in browser storage or its account database, or use conversations to build a model-training dataset. Request state is cleared after processing; canceling a reply initiates cleanup.</p>
     <p>Clear chat, signing out, reloading or leaving the page clears the conversation. Copying text, screenshots, browser extensions and your device can create copies outside this design. Temporary chats are not a guarantee of anonymity or zero infrastructure-provider logs. Do not submit passwords, private keys or information you are not entitled to share.</p>
     <h2>Browser storage</h2>
-    <p>This tab’s session storage holds the sign-in session and the verifier needed to complete sign-in. Separately, after you press “Got it,” local storage remembers dismissal of the storage notice on this browser for up to 180 days. These entries do not save chats. Browsers may restore sessions, so sign out when using a shared device. See <a href={COOKIES_PATH} target="_blank" rel="noopener noreferrer">Cookies &amp; browser storage</a> for the entries, purposes and duration.</p>
+    <p>This tab’s session storage holds the sign-in session and the verifier needed to complete sign-in. When you choose a provider sign-in with an unsent draft, immediately before the redirect we also save only that draft, its reply mode and sign-in recovery metadata in this tab. We do not save drafts continuously as you type, or include conversation transcripts or answers. This recovery copy is not put in sign-in URLs, application logs or our server database. A draft associated with an existing account is never restored into a different account. Restoring a draft does not send it.</p>
+    <p>The saved draft is eligible for recovery for a fixed 10 minutes, without extending the expiry. Its entry is removed immediately when restored or reviewed; Clear chat and choosing Sign out cancel recovery. If storage cannot save a nonempty draft, the redirect is blocked while the draft stays in page memory. An expired entry can remain in browser storage while you are away; it is discarded and removed on your next Offscript access. Tab closure ordinarily removes session storage, but browser session restoration can preserve it.</p>
+    <p>Separately, after you press “Got it,” local storage remembers dismissal of the storage notice on this browser for up to 180 days. This preference does not save chats. Sign out when using a shared device. See <a href={COOKIES_PATH} target="_blank" rel="noopener noreferrer">Cookies &amp; browser storage</a> for the entries, purposes and duration.</p>
     <h2>Purpose, retention and your choices</h2>
     <p>We process account and message information to provide the service you request. Where applicable, the legal bases are performing that service, legitimate interests in proportionate security and operation, and legal obligations. Reading this notice does not consent to unrelated processing.</p>
     <p>If you contact us, we receive your email address and the information you send, and use it to respond to the request.</p>

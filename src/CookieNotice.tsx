@@ -10,7 +10,7 @@ export function CookieNotice({onDetails,onDismiss}:{onDetails:()=>void;onDismiss
   if(!visible)return null;
   function dismiss(){dismissNotice(browserStorage());setVisible(false);onDismiss()}
   return <aside className="storage-notice" aria-labelledby="storage-notice-title">
-    <div><h2 id="storage-notice-title">Just the essentials.</h2><p>We use browser storage for sign-in and this notice. No analytics or advertising tags.</p><button className="notice-details" type="button" onClick={onDetails}>Cookies &amp; storage details</button><p id="storage-notice-memory">Remembered on this browser for 180 days when storage is available.</p></div>
+    <div><h2 id="storage-notice-title">Just the essentials.</h2><p>We use browser storage for sign-in, brief recovery of an unsent draft across sign-in, and this notice. No analytics or advertising tags.</p><button className="notice-details" type="button" onClick={onDetails}>Cookies &amp; storage details</button><p id="storage-notice-memory">This notice’s dismissal is remembered on this browser for 180 days when storage is available.</p></div>
     <button type="button" className="notice-dismiss" aria-describedby="storage-notice-memory" onClick={dismiss}>Got it</button>
   </aside>;
 }
