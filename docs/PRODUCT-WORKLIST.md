@@ -1,6 +1,12 @@
 # Product worklist
 
-Updated October 27, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated October 30, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+
+## October 30 unsent draft recovery across provider sign-in
+
+- **IN PROGRESS — not live until release is confirmed.** The owner explicitly authorized this narrow temporary-storage exception so an unsent prompt survives a provider OAuth redirect. Write only the current unsent draft, reply mode, sign-in project origin, optional original owner ID, fixed timestamps and random attempt ID to the same tab’s `offscript.signin-draft.v1` sessionStorage entry immediately before the provider redirect the user chooses. No continuous typing autosave, transcripts, answers, server database storage, or prompt text in URLs/logs.
+- Eligibility expires after a fixed 10 minutes without sliding. Remove the entry immediately when restored or reviewed; Clear chat and explicit sign-out cancel recovery. Expired bytes may remain while the browser is away and must be discarded/removed on the next Offscript access. Tab closure ordinarily drops sessionStorage, with the existing browser-restoration caveat. Never restore a previously owned draft into another account, and never auto-send restored text. If a nonempty draft cannot be saved, block the redirect and keep it in page memory.
+- Update the current-processing Privacy version/date and Cookies notice to October 30, including the concise storage notice. This exception supersedes older blanket page-memory-only draft statements only for this OAuth handoff. Conversation history and answers remain page-memory-only. Preserve artwork/style, operator facts, Terms/eligibility status and all unrelated behavior. Root and implementation agent own validation/release; these disclosure edits alone establish neither testing nor deployment.
 
 ## October 27 context, usefulness, speed and privacy corrections
 

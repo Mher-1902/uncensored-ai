@@ -58,25 +58,28 @@ export function useAccount(config: AuthConfig | null | undefined) {
     setWelcomeUser(null);
     if(client&&session&&welcomeCandidate&&welcomeCandidate.session.user.id===session.user.id&&welcomeCandidate.config.url===config?.url&&welcomeCandidate.config.publishableKey===config?.publishableKey)void rememberWelcome(client.auth,session.user.id,welcomeCandidate.config);
   }
-  return {client, session, loading, error, recovery, setRecovery, accessToken,chatSession,needsSignIn,requireSignIn:()=>setNeedsSignIn(true), providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&!needsSignIn&&welcomeUser===session.user.id),dismissWelcome};
+  return {client, session, loading, error, recovery, setRecovery, accessToken,chatSession,needsSignIn,requireSignIn:()=>setNeedsSignIn(true), authOrigin:config?.url,providers: config?.providers || [], emailEnabled: Boolean(config?.emailEnabled),welcome:Boolean(session&&!needsSignIn&&welcomeUser===session.user.id),dismissWelcome};
 }
 
 type Account = ReturnType<typeof useAccount>;
 type Mode = 'signin' | 'signup' | 'reset' | 'password';
-export function AccountDialog({account, open, onClose}: {account: Account; open: boolean; onClose: () => void}) {
+export function AccountDialog({account, open, onClose, beforeOAuth, hasDraft=false}: {account: Account; open: boolean; onClose: () => void; beforeOAuth?:()=>void|(()=>void); hasDraft?:boolean}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState(''), [password, setPassword] = useState('');
   const [pending, setPending] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const attempt = useRef(0);
+  const latestBeforeOAuth=useRef(beforeOAuth);latestBeforeOAuth.current=beforeOAuth;
+  const cancelDraft=useRef<(()=>void)|undefined>(undefined);
+  function cancelHandoff(){cancelDraft.current?.();cancelDraft.current=undefined;}
   useEffect(() => {
     if (open) {setMode(account.recovery ? 'password' : 'signin'); dialog.current?.showModal();}
-    else {dialog.current?.close(); attempt.current++; setPassword(''); setError(''); setNotice(''); setPending(false);}
+    else {dialog.current?.close(); attempt.current++; cancelHandoff(); setPassword(''); setError(''); setNotice(''); setPending(false);}
   }, [open]);
   useEffect(() => {if (account.recovery) setMode('password');}, [account.recovery]);
   useEffect(() => {if (open && account.session && !account.needsSignIn && !account.recovery && (mode === 'signin' || mode === 'signup')) onClose();}, [open, account.session, account.needsSignIn, account.recovery, mode, onClose]);
-  function choose(value: Mode) {attempt.current++; setPending(false); setPassword(''); setError(''); setNotice(''); setMode(value);}
-  function close() {attempt.current++; setPassword(''); onClose();}
+  function choose(value: Mode) {attempt.current++; cancelHandoff(); setPending(false); setPassword(''); setError(''); setNotice(''); setMode(value);}
+  function close() {attempt.current++; cancelHandoff(); setPassword(''); onClose();}
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!account.client || pending) return;
@@ -111,10 +114,16 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
     const current = ++attempt.current;
     setPending(true); setError(''); setNotice('');
     try {
-      const {error: failure} = await account.client.auth.signInWithOAuth({provider, options: {redirectTo: new URL('/', location.origin).href}});
+      const {data,error: failure} = await account.client.auth.signInWithOAuth({provider, options: {redirectTo: new URL('/', location.origin).href,skipBrowserRedirect:true}});
       if (failure) throw failure;
+      if(current!==attempt.current)return;
+      if(!data.url)throw Error('Sign-in could not start. Please try again.');
+      const destination=new URL(data.url);
+      if(destination.origin!==account.authOrigin||destination.pathname!=='/auth/v1/authorize')throw Error('Sign-in returned an unexpected destination. Please try again.');
+      cancelDraft.current=latestBeforeOAuth.current?.()||undefined;
+      location.assign(destination.href);
     } catch (failure) {
-      if (current === attempt.current) setError(failure instanceof Error ? failure.message : 'Sign-in could not start. Please try again.');
+      if (current === attempt.current) {cancelHandoff();setError(failure instanceof Error ? failure.message : 'Sign-in could not start. Please try again.');}
     } finally {if (current === attempt.current) setPending(false);}
   }
   const title = {signin: 'Your next question starts here.', signup: 'Make room for a question.', reset: 'Reset your password.', password: 'Choose a new password.'}[mode];
@@ -123,6 +132,7 @@ export function AccountDialog({account, open, onClose}: {account: Account; open:
     <p>{mode === 'signup' ? 'Create an account for temporary conversations.' : mode === 'reset' ? 'We’ll send a link to the email address on your account.' : mode === 'password' ? 'Use a unique password with at least 12 characters.' : 'Sign in or create an account with a provider below.'}</p>
     {account.needsSignIn&&<p role="status">Your session expired. Your reply stays on this page until you leave or reload. Copy anything you need before continuing to sign in.</p>}
     {(mode==='signin'||mode==='signup')&&<AccountPrivacy signup={mode==='signup'}/>}
+    {hasDraft&&(mode==='signin'||mode==='signup')&&<p className="muted">Your unsent prompt will wait in this tab for up to 10 minutes while you sign in. It returns for review; it is never sent automatically.</p>}
     {account.error && <p className="account-error" role="alert">{account.error}</p>}
     {!account.client ? <p role="status">{account.loading ? 'Preparing sign-in…' : 'Account setup is not ready yet. Please check back soon.'}</p> : <>
       {(mode === 'signin' || mode === 'signup') && <div className="account-providers">{account.providers.map(provider => <button type="button" className="account-provider" key={provider} disabled={pending} onClick={() => void oauth(provider)}>Continue with {provider === 'github' ? 'GitHub' : 'Google'}</button>)}</div>}
