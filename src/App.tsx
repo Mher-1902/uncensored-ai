@@ -31,7 +31,6 @@ export function App(){
   const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[reasoned,setReasoned]=useState(false);
   const [pilotOpen,setPilotOpen]=useState(false),[accountOpen,setAccountOpen]=useState(false),[signingOut,setSigningOut]=useState(false);
   const [cookiesOpen,setCookiesOpen]=useState(false);
-  const [draftRecovered,setDraftRecovered]=useState(false);
   const account=useAccount(config?.auth);
   const pilot=usePilotControls(config,account.session?.user.id,account.accessToken);
   useEffect(()=>{if(!account.session)setPilotOpen(false)},[account.session?.user.id]);
@@ -42,11 +41,11 @@ export function App(){
   const accountOwnerNow=useRef(account.session?.user.id??null);accountOwnerNow.current=account.session?.user.id??null;
   useEffect(()=>()=>{if(draftExpiry.current!==null)clearTimeout(draftExpiry.current)},[]);
   useEffect(()=>{let disposed=false;loadConfig().then(c=>{if(!disposed)setConfig(c)}).catch(e=>{if(!disposed)setConfigError(e.message)});return()=>{disposed=true}},[]);
-  const erase=useEffectEvent(()=>{generation.current++;controller.current?.abort();controller.current=null;draftNow.current='';setMessages([]);setDraft('');setDraftRecovered(false);setError('');setBusy(false);setStatus('')});
+  const erase=useEffectEvent(()=>{generation.current++;controller.current?.abort();controller.current=null;draftNow.current='';setMessages([]);setDraft('');setError('');setBusy(false);setStatus('')});
   const restoreSignInDraft=useEffectEvent((replaceCurrent=false)=>{
     if(!config?.auth||!account.client||account.loading)return;
     const saved=consumeSignInDraft(draftStorage(),{authOrigin:config.auth.url,userId:account.session?.user.id??null});
-    if(saved&&(replaceCurrent||!draft.trim())){draftNow.current=saved.text;modeNow.current=saved.reasoned;setDraft(saved.text);setReasoned(saved.reasoned);setDraftRecovered(true);}
+    if(saved&&(replaceCurrent||!draft.trim())){draftNow.current=saved.text;modeNow.current=saved.reasoned;setDraft(saved.text);setReasoned(saved.reasoned);}
   });
   useEffect(()=>{
     if(!config?.auth)return;
@@ -65,7 +64,7 @@ export function App(){
   useEffect(()=>{const leave=()=>erase();const restore=(event:PageTransitionEvent)=>{if(event.persisted){erase();restoreSignInDraft(true)}};window.addEventListener('pagehide',leave);window.addEventListener('pageshow',restore);return()=>{window.removeEventListener('pagehide',leave);window.removeEventListener('pageshow',restore);controller.current?.abort()}},[]);
   useEffect(()=>{if(input.current){input.current.style.height='auto';input.current.style.height=`${Math.min(input.current.scrollHeight,180)}px`}},[draft]);
   useEffect(()=>{if(follow.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight},[messages,status]);
-  function clear(){clearSignInDraft(draftStorage());draftNow.current='';conversationOwner.current=accountOwnerNow.current;generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setDraftRecovered(false);setError('');setBusy(false);setStatus('');input.current?.focus()}
+  function clear(){clearSignInDraft(draftStorage());draftNow.current='';conversationOwner.current=accountOwnerNow.current;generation.current++;controller.current?.abort();controller.current=null;setMessages([]);setDraft('');setError('');setBusy(false);setStatus('');input.current?.focus()}
   function preserveDraftForSignIn(){
     if(signingOut)throw Error('Sign-out is still finishing. Please try signing in again in a moment.');
     const storage=draftStorage();
@@ -89,7 +88,7 @@ export function App(){
     if(config.requireAuth&&(!account.session||account.needsSignIn)){setAccountOpen(true);return}
     if(account.session&&conversationOwner.current&&conversationOwner.current!==account.session.user.id){erase();return}
     if(config.accountControl&&(pilot.loading||pilot.error||!canUsePilot(pilot.data,deep))){setPilotOpen(true);return}
-    clearSignInDraft(draftStorage());setDraftRecovered(false);
+    clearSignInDraft(draftStorage());
     const current=++generation.current,ctrl=new AbortController();controller.current=ctrl;setBusy(true);setError('');setDraft(value=>value.trim()===question?'':value);setStatus('Preparing a reply…');follow.current=true;
     const user:Message=retry?.question||{id:crypto.randomUUID(),role:'user',content:question,complete:true};
     const outgoing=requestHistory(retry?.history??messages,user);
@@ -112,11 +111,10 @@ export function App(){
     <main>
       {!active?<section className="hero" aria-labelledby="brand"><HeroArt/><div className="hero-copy"><h1 id="brand">offscript<span>_</span></h1><h2>Ask. Think. Disappear.</h2><p className="intro">Your question. A little space to think. No saved chats.</p></div></section>:<div className="conversation" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<100}}><div className="messages">{messages.map(m=><article className={`message ${m.role}`} key={m.id}><div className="speaker">{m.role==='user'?'YOU':'OFFSCRIPT'}{m.role==='assistant'&&<span className="tiny-mark">_</span>}</div><div className="markdown">{m.content?<Suspense fallback={<p className="plain-reply">{m.content}</p>}><Reply text={m.content}/></Suspense>:m.state==='streaming'?<WaitingReply/>:null}</div>{m.role==='assistant'&&m.state!=='streaming'&&<div className="reply-actions">{(m.state==='stopped'||m.state==='interrupted')&&<span className="reply-outcome">{m.state==='stopped'?'Stopped':m.content?'Reply interrupted':'No answer received'}</span>}{!busy&&retryTurn(messages,m.id)&&<button className="retry-reply" onClick={()=>void retry(m.id)}><RotateCcw size={13}/>Retry answer</button>}{m.content&&<CopyReply text={m.content}/>}</div>}</article>)}</div></div>}
       <div className="composer-zone">
-        {draftRecovered&&<p className="draft-recovery" role="status">Your draft is back. Review it, then press Send.</p>}
         {(error||configError)&&<div className="error" role="alert"><span>{error||configError}</span>{account.needsSignIn&&<button type="button" className="account-button" onClick={()=>setAccountOpen(true)}>Sign in</button>}<button className="icon-button" aria-label="Dismiss error" onClick={()=>{setError('');setConfigError('')}}><X size={16}/></button></div>}
         <form className="composer" onSubmit={send}>
           <label className="sr-only" htmlFor="composer">Message Offscript</label>
-          <textarea id="composer" ref={input} placeholder="Ask anything. Go off script." value={draft} onChange={e=>{draftNow.current=e.target.value;setDraft(e.target.value);setDraftRecovered(false)}} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
+          <textarea id="composer" ref={input} placeholder="Ask anything. Go off script." value={draft} onChange={e=>{draftNow.current=e.target.value;setDraft(e.target.value);}} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();void send()}}} rows={1} autoComplete="off" spellCheck={false}/>
           <div className="composer-bottom">
             <div className="send-options">
               <AnswerMode reasoned={reasoned} onChange={value=>{modeNow.current=value;setReasoned(value)}} disabled={Boolean(config?.space&&!config.apiBase)}/>
