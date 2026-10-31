@@ -98,4 +98,3 @@
 .storage-inventory dt{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 7px}.storage-inventory dd{font-size:12px;line-height:1.75;text-align:left;color:#b8c1ba;margin:0;overflow-wrap:anywhere}
 .storage-inventory code{font-size:11px;overflow-wrap:anywhere}
 @media(max-width:700px){.storage-notice{width:calc(100% - 32px);gap:14px;padding:14px;margin-bottom:16px}.notice-dismiss{padding:9px 12px}}
-.draft-recovery{margin:0 0 10px;color:#b6d88b;font-size:.85rem;line-height:1.5}
