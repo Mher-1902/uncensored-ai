@@ -5,7 +5,8 @@ COPY rust/Cargo.toml rust/Cargo.lock ./
 COPY rust/offscript-backend ./offscript-backend
 # Ivy Bridge supports AVX/F16C, not AVX2/FMA/BMI2. Never target the build host.
 ENV CARGO_BUILD_JOBS=1 RUSTFLAGS="-C target-cpu=ivybridge"
-RUN cargo build --locked --release --bin offscript-backend --jobs 1
+RUN cargo fetch --locked
+RUN --network=none cargo build --offline --locked --release --bin offscript-backend --jobs 1
 
 FROM registry.fedoraproject.org/fedora:44@sha256:959833699a2fb5da1bc70b4db659ab229252c2ba1ed8e2fa29d4b30a704c0f63 AS native-build
 RUN dnf -y --setopt=install_weak_deps=False install gcc-c++ cmake make git python3 && dnf clean all
@@ -17,8 +18,8 @@ RUN revision=$(python3 -c 'import json,re; v=json.load(open("/tmp/model.json"))[
     && git -C /opt/llama checkout --detach "$revision" \
     && test "$(git -C /opt/llama rev-parse HEAD)" = "$revision"
 COPY scripts/patch-native-rust-input.py /tmp/patch-native-rust-input.py
-RUN python3 /tmp/patch-native-rust-input.py /opt/llama
-RUN cmake -S /opt/llama -B /opt/llama/build -DCMAKE_BUILD_TYPE=Release \
+RUN --network=none python3 /tmp/patch-native-rust-input.py /opt/llama
+RUN --network=none cmake -S /opt/llama -B /opt/llama/build -DCMAKE_BUILD_TYPE=Release \
     -DGGML_NATIVE=OFF -DGGML_CPU_ALL_VARIANTS=OFF \
     -DGGML_AVX=ON -DGGML_F16C=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_BMI2=OFF \
     -DGGML_AVX512=OFF -DGGML_AVX512_VBMI=OFF -DGGML_AVX512_VNNI=OFF -DGGML_AVX512_BF16=OFF -DGGML_AVX_VNNI=OFF \

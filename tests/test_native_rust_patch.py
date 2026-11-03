@@ -47,6 +47,8 @@ class NativeRustPatchTests(unittest.TestCase):
             patch.PROPS_AFTER + patch.CHAT_AFTER + patch.CHAT_AFTER,
             self.source().replace(patch.ERASE_BEFORE, patch.ERASE_AFTER),
             patch.patch_text(self.source()).replace('slot->smpl.reset();', '// omitted sampler cleanup'),
+            patch.patch_text(self.source()).replace('token.is_number_integer()', 'token.is_number()'),
+            patch.patch_text(self.source()).replace('id >= 0.0', 'id >= -1.0'),
         ]:
             with self.assertRaises(ValueError):
                 patch.patch_text(source)

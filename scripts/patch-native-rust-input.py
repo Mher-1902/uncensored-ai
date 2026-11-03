@@ -59,11 +59,13 @@ CHAT_AFTER = '''    this->post_chat_completions = [this](const server_http_req &
                     // llama_vocab_n_tokens value and remains valid in sleep.
                     const auto n_vocab = static_cast<uint64_t>(meta->model_vocab_n_tokens);
                     for (const auto & token : tokens) {
-                        if (token.is_number_unsigned()) {
-                            valid = token.get<uint64_t>() < n_vocab;
-                        } else if (token.is_number_integer()) {
-                            const auto id = token.get<int64_t>();
-                            valid = id >= 0 && static_cast<uint64_t>(id) < n_vocab;
+                        if (token.is_number_integer()) {
+                            // common_json has no unsigned predicate. Range-check
+                            // as double before any narrowing integer conversion:
+                            // all accepted IDs are below this small vocabulary
+                            // and exact; huge unsigned values cannot wrap here.
+                            const auto id = token.get<double>();
+                            valid = id >= 0.0 && id < static_cast<double>(n_vocab);
                         } else {
                             valid = false;
                         }
