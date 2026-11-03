@@ -18,5 +18,9 @@
 !docker/**
 !tests/
 !tests/**
+!rust/
+!rust/**
+rust/target/
+rust/target/**
 **/__pycache__/**
 **/*.pyc

@@ -60,11 +60,20 @@ class Environment:
         return json.loads(self.docker(["inspect", "--format", STATE_TEMPLATE, target]))
 
     def worker(self, container):
+        prefix = ["exec", container, "/usr/bin/env", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/tmp"]
+        try:
+            self.docker([*prefix, "/usr/bin/test", "-x", "/usr/local/bin/offscript-backend"])
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 1:
+                raise
+        else:
+            # The Rust image has no Node interpreter. Never fall back after a
+            # present Rust CLI reports invalid evidence or a runtime failure.
+            return json.loads(self.docker([*prefix, "/usr/local/bin/offscript-backend", "worker-evidence"]))
         code = ("fetch('http://127.0.0.1:8080/api/health',{signal:AbortSignal.timeout(2000)})"
                 ".then(r=>r.json()).then(v=>console.log(JSON.stringify({protocol:v.protocol,workerId:v.workerId})))"
                 ".catch(()=>process.exit(1))")
-        return json.loads(self.docker(["exec", container, "/usr/bin/env", "-i", "PATH=/usr/local/bin:/usr/bin:/bin",
-                                       "HOME=/tmp", "/usr/local/bin/node", "--eval", code]))
+        return json.loads(self.docker([*prefix, "/usr/local/bin/node", "--eval", code]))
 
     def boot(self):
         return Path("/proc/sys/kernel/random/boot_id").read_text().strip()

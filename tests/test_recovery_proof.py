@@ -62,6 +62,24 @@ class Fixture:
 
 
 class RecoveryProofTests(unittest.TestCase):
+    def test_worker_capture_uses_rust_cli_without_requiring_node(self):
+        environment=proof.Environment()
+        expected={"protocol":5,"workerId":WORKER}
+        with patch.object(environment,"docker",side_effect=["",json.dumps(expected)]) as docker:
+            self.assertEqual(environment.worker("a"*64),expected)
+        self.assertEqual(docker.call_args_list[-1].args[0][-2:],["/usr/local/bin/offscript-backend","worker-evidence"])
+
+    def test_absent_rust_binary_uses_existing_node_capture_but_other_failures_do_not_fallback(self):
+        environment=proof.Environment();expected={"protocol":5,"workerId":WORKER}
+        missing=proof.subprocess.CalledProcessError(1,["test"])
+        with patch.object(environment,"docker",side_effect=[missing,json.dumps(expected)]) as docker:
+            self.assertEqual(environment.worker("a"*64),expected)
+        self.assertEqual(docker.call_args_list[-1].args[0][-3:-1],["/usr/local/bin/node","--eval"])
+        for responses in ([proof.subprocess.CalledProcessError(125,["docker"])],["",proof.subprocess.CalledProcessError(1,["worker-evidence"])]):
+            with patch.object(environment,"docker",side_effect=responses) as docker:
+                with self.assertRaises(proof.subprocess.CalledProcessError):environment.worker("a"*64)
+                self.assertEqual(docker.call_count,len(responses))
+
     def test_stopped_pair_proves_only_the_captured_worker_without_database_changes(self):
         fixture = Fixture()
         evidence = proof.capture(fixture)

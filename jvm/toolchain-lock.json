@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "scala_cli": {
+    "version": "1.18.0",
+    "url": "https://github.com/VirtusLab/scala-cli/releases/download/v1.18.0/scala-cli-x86_64-pc-linux.gz",
+    "sha256": "eb41442f870bcae75aa5d6622ac96a173dae14fed59f71c97125eb21536bb060"
+  },
+  "java": {
+    "vendor": "Eclipse Temurin",
+    "version": "21.0.13+9",
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz",
+    "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c"
+  },
+  "scala": {
+    "version": "3.3.9",
+    "compiler_pom": "https://repo.maven.apache.org/maven2/org/scala-lang/scala3-compiler_3/3.3.9/scala3-compiler_3-3.3.9.pom"
+  },
+  "jackson_core": {
+    "version": "2.18.7",
+    "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.18.7/jackson-core-2.18.7.jar",
+    "sha256": "e1c578d374f519aa9aa74cbdc251c6705ffa08ac78faea5fa36bad213de30dc8",
+    "checksum_source": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.18.7/jackson-core-2.18.7.jar.sha256"
+  }
+}
