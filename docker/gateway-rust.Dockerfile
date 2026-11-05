@@ -10,6 +10,9 @@ FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde
 WORKDIR /app
 COPY --from=build --chmod=0755 /src/target/release/offscript-backend /usr/local/bin/offscript-backend
 COPY --chmod=0644 self-host/model.json ./self-host/model.json
+# COPY applies its requested mode to a newly created parent directory too.
+# The unprivileged runtime must be able to traverse the public config directory.
+RUN chmod 0755 /app/self-host
 ENV OFFSCRIPT_ROOT=/app OFFSCRIPT_TOKENIZER_DIR=/app/.data/tokenizer HOST=0.0.0.0 PORT=8080 TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1
 USER 65532:65532
 HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=3 CMD ["offscript-backend", "check-gateway"]
