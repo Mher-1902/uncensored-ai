@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {ACCOUNT_IDLE_MS,createAccountPersistence,guardedAccountReader} from '../src/account-persistence.ts';
 import {SessionExpiredError} from '../src/session.ts';
+import {accountSessionResumer,listenForAccountReturn} from '../src/account-resume.ts';
 
 const USER='11111111-1111-4111-8111-111111111111';
 const SESSION='22222222-2222-4222-8222-222222222222';
@@ -27,8 +28,8 @@ function sharedLock(){
   };
 }
 
-function tokenResponse(label='initial'){
-  const now=Math.floor(Date.now()/1000),expires=now+60*24*60*60;
+function tokenResponse(label='initial',lifetime=60*24*60*60){
+  const now=Math.floor(Date.now()/1000),expires=now+lifetime;
   const claims={sub:USER,session_id:SESSION,aud:'authenticated',role:'authenticated',iat:now,exp:expires};
   const encode=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
   return {
@@ -109,6 +110,43 @@ test('the real SDK restores the browser envelope in a fresh tab without another 
   assert.equal(returning.saved.accepts(result.data.session),true);
   assert.equal(JSON.parse(f.local.data.get(returning.saved.storageKey)).lastActivityAt,envelope.lastActivityAt);
   assert.equal(f.calls.length,1,'Restoring a valid session must not call the provider or auth API');
+});
+
+test('mobile pageshow resumes an expiring real SDK session without another provider sign-in',{timeout:10000},async t=>{
+  const f=fixture(t),owner=await f.client(),initial=await passwordSignIn(f,owner,tokenResponse('before-suspend',10));
+  const next=tokenResponse('after-suspend'),adopted=[],target=new EventTarget();
+  f.respond(call=>{
+    assert.equal(call.url.searchParams.get('grant_type'),'refresh_token');
+    assert.equal(call.body.refresh_token,initial.refresh_token);return jsonResponse(next);
+  });
+  const resumer=accountSessionResumer(owner.sdk.auth,owner.saved,value=>adopted.push(value));
+  const cleanup=listenForAccountReturn(target,()=>void resumer.resume());
+  t.after(()=>{cleanup();resumer.dispose();});
+  target.dispatchEvent(new Event('pageshow'));target.dispatchEvent(new Event('online'));
+  await resumer.resume();
+  assert.equal(adopted.length,1);assert.equal(adopted[0].access_token,next.access_token);
+  assert.equal(f.calls.length,2,'One password fixture plus one refresh, no additional sign-in');
+  assert.equal(JSON.parse(owner.saved.storage.getItem(owner.saved.storageKey)).refresh_token,next.refresh_token);
+});
+
+test('online retry restores a real SDK session after a failed return check without clearing saved credentials',{timeout:10000},async t=>{
+  const f=fixture(t),owner=await f.client(),initial=await passwordSignIn(f,owner);
+  const before=f.local.data.get(owner.saved.storageKey),adopted=[],target=new EventTarget();let unavailable=true;
+  const resumer=accountSessionResumer({getSession:()=>unavailable?Promise.reject(new TypeError('offline fixture')):owner.sdk.auth.getSession()},owner.saved,value=>adopted.push(value));
+  const cleanup=listenForAccountReturn(target,()=>void resumer.resume());t.after(()=>{cleanup();resumer.dispose();});
+  target.dispatchEvent(new Event('pageshow'));await resumer.resume();
+  assert.equal(adopted.length,0);assert.equal(f.local.data.get(owner.saved.storageKey),before);
+  unavailable=false;target.dispatchEvent(new Event('online'));await resumer.resume();
+  assert.equal(adopted.length,1);assert.equal(adopted[0].access_token,initial.access_token);
+  assert.equal(f.calls.length,1,'Reconnect does not require another provider sign-in');
+});
+
+test('a resumed read cannot revive a session after another tab signs out',{timeout:10000},async t=>{
+  const f=fixture(t),owner=await f.client(),initial=await passwordSignIn(f,owner);let release;
+  const adopted=[],resumer=accountSessionResumer({getSession:()=>new Promise(resolve=>{release=resolve;})},owner.saved,value=>adopted.push(value));
+  const pending=resumer.resume();await Promise.resolve();owner.saved.storage.removeItem(owner.saved.storageKey);
+  release({data:{session:initial},error:null});await pending;
+  assert.equal(adopted.length,0);assert.equal(owner.saved.isActive(),false);resumer.dispose();
 });
 
 test('the real SDK preserves PKCE in the same tab across the provider redirect and consumes it on exchange',{timeout:10000},async t=>{

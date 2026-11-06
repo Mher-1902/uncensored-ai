@@ -6,6 +6,9 @@ import {AccountPrivacy} from './AccountPrivacy';
 import {accountSessionProvider} from './session';
 import {welcomeNeeded,rememberWelcome} from './welcome-preference';
 import {ACCOUNT_ACTIVITY_FLUSH_MS,createAccountPersistence,guardedAccountReader,browserSessionLock,expireBrowserSessionIfInactive,type AccountPersistence} from './account-persistence';
+import {accountSessionResumer,listenForAccountReturn} from './account-resume';
+
+const RESTORE_CONNECTION_ERROR='Sign-in recovery is waiting for a connection.';
 
 export function useAccount(config: AuthConfig | null | undefined) {
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -51,6 +54,11 @@ export function useAccount(config: AuthConfig | null | undefined) {
         if (event === 'SIGNED_OUT') {setNeedsSignIn(expired);setRecovery(false);setWelcomeUser(null);setWelcomeCandidate(null);welcomedUser.current=null;}
       });
       let flushTimer:ReturnType<typeof setTimeout>|undefined;
+      const resumer=accountSessionResumer(instance.auth,saved,value=>{
+        if(disposed)return;
+        hasSession=true;expired=false;setSession(value);setNeedsSignIn(false);
+        setError(previous=>previous===RESTORE_CONNECTION_ERROR?'':previous);
+      });
       const activity=()=>{
         if(disposed||document.visibilityState!=='visible')return;
         // touch() checks expiry before extending from a real event.
@@ -58,7 +66,7 @@ export function useAccount(config: AuthConfig | null | undefined) {
         if(flushTimer===undefined)flushTimer=setTimeout(()=>{flushTimer=undefined;void saved.flush().catch(()=>{});},ACCOUNT_ACTIVITY_FLUSH_MS);
       };
       const inputActivity=(event:Event)=>{if(event.isTrusted)activity();};
-      const foreground=()=>{if(document.visibilityState==='visible'){if(saved.isActive())activity();else if(hasSession)expire();}};
+      const foreground=()=>{if(document.visibilityState==='visible'){if(saved.isActive()){activity();void resumer.resume();}else if(hasSession)expire();}};
       const pagehide=()=>saved.flushForPageHide();
       const visibility=()=>{if(document.visibilityState==='visible')foreground();else pagehide();};
       const storageChanged=(event:StorageEvent)=>{
@@ -68,9 +76,10 @@ export function useAccount(config: AuthConfig | null | undefined) {
       };
       window.addEventListener('pointerdown',inputActivity,{passive:true});window.addEventListener('keydown',inputActivity);
       window.addEventListener('focus',foreground);window.addEventListener('pagehide',pagehide);window.addEventListener('storage',storageChanged);document.addEventListener('visibilitychange',visibility);
+      const stopReturnEvents=listenForAccountReturn(window,foreground);
       const expiryTimer=setInterval(()=>{if(hasSession&&!saved.isActive())expire();},ACCOUNT_ACTIVITY_FLUSH_MS);
       cleanup = () => {
-        saved.flushForPageHide();saved.dispose();subscription.unsubscribe();instance?.auth.stopAutoRefresh();clearTimeout(flushTimer);clearInterval(expiryTimer);
+        saved.flushForPageHide();resumer.dispose();stopReturnEvents();saved.dispose();subscription.unsubscribe();instance?.auth.stopAutoRefresh();clearTimeout(flushTimer);clearInterval(expiryTimer);
         window.removeEventListener('pointerdown',inputActivity);window.removeEventListener('keydown',inputActivity);window.removeEventListener('focus',foreground);window.removeEventListener('pagehide',pagehide);window.removeEventListener('storage',storageChanged);document.removeEventListener('visibilitychange',visibility);
       };
       setPersistence(saved);setClient(instance);
@@ -78,7 +87,7 @@ export function useAccount(config: AuthConfig | null | undefined) {
       if (!disposed) {
         const restored=data.session&&saved.accepts(data.session)?data.session:null;
         hasSession=Boolean(restored);setSession(restored);
-        if (failure) setError('Your sign-in session could not be restored. Please sign in again.');
+        if (failure) setError(saved.isActive()?RESTORE_CONNECTION_ERROR:'Your sign-in session could not be restored. Please sign in again.');
         setLoading(false);
         if(restored)foreground();
       }

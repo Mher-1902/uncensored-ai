@@ -1,6 +1,18 @@
 # Product worklist
 
-Updated October 30, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated November 6, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+
+## November 6 validation
+
+- The owner confirmed repeated sign-in on the canonical `offscript-ai.vercel.app`, in both phone browser and home-screen app. Explicit `pageshow`/online restoration now uses the existing Supabase SDK and epoch/account guard; transient recovery failure preserves credentials. The small accuracy note is added. Samsung offline validation passed both builds, both SEO checks, 205 Node tests and existing Python tests at peak 56°C; no production model request was sent. Release and physical device checks remain separate.
+
+## November 5 owner requests
+
+- Add a small muted accuracy note beneath the prompt: “OffScript is an AI and can make mistakes. Check important information.” Preserve the illustrated UI, terminal replies and compact Privacy/Cookies controls.
+- Investigate repeated sign-in on both the phone browser and installed home-screen app, and verify return behavior on phone, iPad and laptop. PR #65 already released the rolling 30-day browser inactivity rule; verify the actual new failure before claiming it fixed. Keep account sessions separate from temporary chats and never use IP trust or save chat history. The released fallback depends on cross-tab lock/storage capability. Canonical and preview origins have separate storage, as do some browser/app contexts.
+- Make Samsung operations visible from the Mac. Docker Desktop currently shows the Mac's empty local engine; the application containers remain on the Samsung. Prepare explicit private SSH access plus an operational dashboard, without moving inference or giving a new dashboard unrestricted Docker control.
+- Set up free, self-hosted Grafana/Prometheus monitoring on the Samsung for viewing from Mac and later iPad. Keep access private, preserve existing public chat/SSH routes, bound CPU/RAM/disk, and collect host/container/queue health only. No chat text, credentials, raw logs, cloud monitoring account or paid plan. Verify dashboards and private reachability before calling monitoring ready.
+- The Rust candidate stays separate in draft PR #66. Its real-model Fast lifecycle and bounded build-worker containment passed privately. Its canonical gateway image built successfully on November 4, source `6355526`, image `sha256:69cc0891d268a3a32016e5d13b8d53a5729b2be114aabbdc70dd673b595257c6`, with production unchanged. The first actual-image runtime check failed because COPY created a non-traversable public profile directory; source fix `3864152` is committed in the separate Rust checkout but its replacement image has not been built or validated. Canonical model image, Deep thermal and shipping long-chunk gates remain open. These additions do not replace that work or establish faster decoding or 50,000-user capacity.
 
 ## October 30 unsent draft recovery across provider sign-in
 

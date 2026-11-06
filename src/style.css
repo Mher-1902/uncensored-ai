@@ -85,6 +85,7 @@
 .composer-bottom{justify-content:flex-end;gap:10px}
 .mode-menu{left:auto;right:0}
 .under-composer{justify-content:center;flex-wrap:wrap;column-gap:16px;row-gap:4px}
+.accuracy-note{flex-basis:100%;font-size:11px;line-height:1.5;color:#8b9690;text-align:center}
 .privacy-link{display:inline-flex;align-items:center;min-height:28px;padding:3px 2px;background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer}
 @media(max-width:700px){.under-composer{column-gap:10px;padding-top:8px;padding-bottom:8px}}
 
