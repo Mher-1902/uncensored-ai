@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 20s
+  scrape_timeout: 5s
+scrape_configs:
+  - job_name: samsung
+    static_configs:
+      - targets: [exporter:9100]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'offscript_.*|node_textfile_.*'
+        action: keep

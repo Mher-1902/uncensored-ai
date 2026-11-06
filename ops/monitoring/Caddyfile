@@ -1,0 +1,11 @@
+{
+    admin off
+    auto_https off
+    persist_config off
+    log default {
+        output discard
+    }
+}
+:8080 {
+    reverse_proxy grafana:3000
+}

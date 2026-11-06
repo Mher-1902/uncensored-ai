@@ -1,0 +1,17 @@
+[Unit]
+Description=Offscript private monitoring containers
+After=offscript-containers.service
+Wants=offscript-containers.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=DOCKER_HOST=unix:///run/user/1000/docker.sock
+Environment=DOCKER_CONFIG=/home/rog/dev/monitoring/empty-docker-config
+ExecStart=/usr/bin/docker compose -p offscript-monitoring -f /home/rog/dev/monitoring/v1/compose.yml up -d --pull never
+ExecStop=/usr/bin/docker compose -p offscript-monitoring -f /home/rog/dev/monitoring/v1/compose.yml stop
+TimeoutStartSec=90
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

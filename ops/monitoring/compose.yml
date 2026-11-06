@@ -1,0 +1,98 @@
+name: offscript-monitoring
+x-limits: &limits
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+  cgroup_parent: offscript-containers.slice
+  pids_limit: 96
+  logging:
+    driver: json-file
+    options: {max-size: 2m, max-file: '2'}
+services:
+  exporter:
+    <<: *limits
+    image: prom/node-exporter@sha256:da83fae85603c4e47e6c68369a7d746e2dda683dc35ea2e234b4f171e0d92798
+    container_name: offscript-monitor-exporter
+    cpus: 0.03
+    mem_limit: 48m
+    memswap_limit: 48m
+    command: ['--collector.disable-defaults', '--collector.textfile', '--collector.textfile.directory=/textfile', '--web.listen-address=:9100']
+    volumes: ['/home/rog/dev/monitoring/textfile:/textfile:ro']
+    networks: [metrics]
+  prometheus:
+    <<: *limits
+    image: prom/prometheus@sha256:89c1a644817e9ad70fa2af76c84898e327c1de7063735f962e8313b1e28672c3
+    container_name: offscript-monitor-prometheus
+    cpus: 0.10
+    mem_limit: 192m
+    memswap_limit: 192m
+    command: ['--config.file=/etc/prometheus/prometheus.yml', '--storage.tsdb.path=/prometheus', '--storage.tsdb.retention.time=48h', '--storage.tsdb.retention.size=96MB', '--storage.tsdb.wal-compression', '--query.max-concurrency=2', '--query.timeout=10s']
+    volumes: ['./prometheus.yml:/etc/prometheus/prometheus.yml:ro', 'prometheus-data:/prometheus']
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=16m']
+    networks: [metrics]
+  grafana:
+    <<: *limits
+    image: grafana/grafana@sha256:6e5d306338670f381a942f1c50d3c266bf71531e5ddd9ee4fc1a133dac5ce63d
+    container_name: offscript-monitor-grafana
+    cpus: 0.15
+    mem_limit: 256m
+    memswap_limit: 256m
+    environment:
+      GF_SERVER_ROOT_URL: https://offscript-samsung-1.tail8c9a09.ts.net:8443/
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_USERS_ALLOW_ORG_CREATE: 'false'
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/admin-password
+      GF_SECURITY_COOKIE_SECURE: 'true'
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SECURITY_DISABLE_GRAVATAR: 'true'
+      GF_SECURITY_CONTENT_SECURITY_POLICY: 'true'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_PLUGINS_PREINSTALL_DISABLED: 'true'
+      GF_PLUGINS_DISABLE_PLUGINS: canvas,cloudwatch,elasticsearch,grafana-postgresql-datasource,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
+      GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: 'true'
+      GOMAXPROCS: '1'
+      GOMEMLIMIT: 96MiB
+      GF_NEWS_NEWS_FEED_ENABLED: 'false'
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: 'false'
+      GF_LOG_MODE: console
+      GF_LOG_LEVEL: warn
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/offscript-dashboards/samsung.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./datasource.yml:/etc/grafana/provisioning/datasources/samsung.yml:ro
+      - ./dashboards.yml:/etc/grafana/provisioning/dashboards/offscript.yml:ro
+      - ./samsung.json:/etc/grafana/offscript-dashboards/samsung.json:ro
+      - /home/rog/dev/monitoring/secrets/admin-password:/run/secrets/admin-password:ro
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=32m']
+    networks: [metrics]
+  proxy:
+    <<: *limits
+    # Exact existing Samsung ingress image, built from docker/ingress.Dockerfile.
+    # Its Caddy low-port file capability was already removed for non-root use.
+    image: sha256:549f9719288d163332a3a8bf0cfbe83bc5eef113362f4ce04ee6b35e85c397cc
+    container_name: offscript-monitor-proxy
+    user: '65532:65532'
+    cpus: 0.03
+    mem_limit: 48m
+    memswap_limit: 48m
+    pids_limit: 32
+    entrypoint: /usr/bin/caddy
+    command: ['run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
+    ports: ['127.0.0.1:3030:8080']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro']
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=8m', '/data:rw,nosuid,nodev,size=8m', '/config:rw,nosuid,nodev,size=8m']
+    networks: [viewer, metrics]
+networks:
+  viewer:
+    driver: bridge
+  metrics:
+    internal: true
+volumes:
+  prometheus-data:
+  grafana-data:
