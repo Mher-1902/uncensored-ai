@@ -57,7 +57,7 @@ services:
       GF_PLUGINS_DISABLE_PLUGINS: canvas,cloudwatch,elasticsearch,grafana-postgresql-datasource,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
       GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: 'true'
       GOMAXPROCS: '1'
-      GOMEMLIMIT: 96MiB
+      GOMEMLIMIT: 128MiB
       GF_NEWS_NEWS_FEED_ENABLED: 'false'
       GF_SNAPSHOTS_EXTERNAL_ENABLED: 'false'
       GF_LOG_MODE: console

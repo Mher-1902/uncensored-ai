@@ -7,8 +7,8 @@
   ],
   "timezone": "browser",
   "schemaVersion": 41,
-  "version": 1,
-  "refresh": "20s",
+  "version": 2,
+  "refresh": "30s",
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -284,7 +284,7 @@
         {
           "expr": "100 * (1 - sum(rate(offscript_host_cpu_seconds_total{mode=\"idle\"}[2m])) / sum(rate(offscript_host_cpu_seconds_total[2m])))",
           "refId": "A",
-          "legendFormat": ""
+          "legendFormat": "Host CPU"
         }
       ],
       "fieldConfig": {
@@ -344,7 +344,7 @@
         {
           "expr": "offscript_host_temperature_celsius",
           "refId": "A",
-          "legendFormat": ""
+          "legendFormat": "Temperature"
         }
       ],
       "fieldConfig": {
@@ -1110,7 +1110,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Host, queue and selected container metrics only. No prompts, replies, account identifiers, credentials or application logs are collected. Updates every 20 seconds; gaps or an old metric age mean monitoring is unavailable. These metrics do not establish inference speed or user capacity. Monitoring runs on the Samsung and stays available while the Mac is off."
+        "content": "Host, queue and selected container metrics only. No prompts, replies, account identifiers, credentials or application logs are collected. Metrics are collected every 20 seconds; the view refreshes every 30 seconds; gaps or an old metric age mean monitoring is unavailable. These metrics do not establish inference speed or user capacity. Monitoring runs on the Samsung and stays available while the Mac is off."
       }
     }
   ],
