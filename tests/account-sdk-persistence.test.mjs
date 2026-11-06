@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {createClient} from '@supabase/supabase-js';
-import {ACCOUNT_IDLE_MS,createAccountPersistence,guardedAccountReader} from '../src/account-persistence.ts';
+import {createClient,AuthClient} from '@supabase/supabase-js';
+import {ACCOUNT_IDLE_MS,createAccountPersistence,guardedAccountReader,browserSessionLock,supportedBrowserSessionLock} from '../src/account-persistence.ts';
 import {SessionExpiredError} from '../src/session.ts';
 import {accountSessionResumer,listenForAccountReturn} from '../src/account-resume.ts';
+import {startAccount} from '../src/account-startup.ts';
 
 const USER='11111111-1111-4111-8111-111111111111';
 const SESSION='22222222-2222-4222-8222-222222222222';
@@ -147,6 +148,78 @@ test('a resumed read cannot revive a session after another tab signs out',{timeo
   const pending=resumer.resume();await Promise.resolve();owner.saved.storage.removeItem(owner.saved.storageKey);
   release({data:{session:initial},error:null});await pending;
   assert.equal(adopted.length,0);assert.equal(owner.saved.isActive(),false);resumer.dispose();
+});
+
+test('a rejected real SDK initialization stays rejected; a fresh startup attempt restores the saved account',{timeout:10000},async t=>{
+  const f=fixture(t),first=await f.client(),signedIn=await passwordSignIn(f,first);
+  const before=f.local.data.get(first.saved.storageKey);await first.close();
+  let attempts=0,disposed=0;const clients=[],waits=[],lifetime=new AbortController();
+  t.after(async()=>{lifetime.abort();for(const sdk of clients)await sdk.auth.stopAutoRefresh();});
+  const restored=await startAccount(()=>{
+    const index=++attempts,lock=sharedLock();
+    const saved=createAccountPersistence({url:f.origin,persistent:f.local,temporary:memoryStorage(),sharedLock:index===1?async()=>{throw Object.assign(Error('fixture lock interrupted'),{isAcquireTimeout:true});}:lock});
+    const sdk={auth:new AuthClient({url:f.origin+'/auth/v1',headers:{apikey:'dummy-publishable-key'},skipAutoInitialize:true,persistSession:true,storageKey:saved.storageKey,storage:saved.storage,lock:saved.lock,detectSessionInUrl:false,autoRefreshToken:false})};clients.push(sdk);
+    return {dispose(){disposed++;saved.dispose();void sdk.auth.stopAutoRefresh();},async start(){
+      if(index===1){
+        await assert.rejects(sdk.auth.initialize(),/fixture lock interrupted/);
+        await assert.rejects(sdk.auth.getSession(),/fixture lock interrupted/,'Reusing the SDK cannot repair its cached rejection');
+      }
+      const init=await sdk.auth.initialize();assert.equal(init.error,null);
+      const result=await sdk.auth.getSession();assert.equal(result.error,null);return result.data.session;
+    }};
+  },lifetime.signal,async milliseconds=>{waits.push(milliseconds);});
+  assert.equal(restored.access_token,signedIn.access_token);assert.equal(attempts,2);assert.equal(disposed,1);
+  assert.deepEqual(waits,[300]);assert.equal(f.local.data.get(first.saved.storageKey),before);
+  assert.equal(f.calls.length,1,'Recovery requires no new provider sign-in');
+});
+
+test('anonymous startup recovers from a lock abort and can prepare the real SDK OAuth handoff',{timeout:10000},async t=>{
+  const f=fixture(t),lifetime=new AbortController();let attempts=0;const clients=[];
+  t.after(async()=>{lifetime.abort();for(const sdk of clients)await sdk.auth.stopAutoRefresh();});
+  const owner=await startAccount(()=>{
+    const index=++attempts;
+    const saved=createAccountPersistence({url:f.origin,persistent:f.local,temporary:memoryStorage(),sharedLock:index===1?browserSessionLock({request:async()=>{throw new DOMException('fixture page suspended','AbortError');}}):sharedLock()});
+    const sdk={auth:new AuthClient({url:f.origin+'/auth/v1',headers:{apikey:'dummy-publishable-key'},skipAutoInitialize:true,persistSession:true,storageKey:saved.storageKey,storage:saved.storage,lock:saved.lock,flowType:'pkce',detectSessionInUrl:false,autoRefreshToken:false})};clients.push(sdk);
+    return {dispose(){saved.dispose();void sdk.auth.stopAutoRefresh();},async start(){const init=await sdk.auth.initialize();assert.equal(init.error,null);const result=await sdk.auth.getSession();assert.equal(result.error,null);assert.equal(result.data.session,null);return {sdk,saved};}};
+  },lifetime.signal,async()=>{});
+  await owner.saved.beginSignIn(true);
+  const result=await owner.sdk.auth.signInWithOAuth({provider:'github',options:{skipBrowserRedirect:true,redirectTo:'https://offscript.example.invalid/'}});
+  assert.equal(result.error,null);assert.equal(new URL(result.data.url).searchParams.get('provider'),'github');assert.equal(attempts,2);assert.equal(f.calls.length,0);
+});
+
+test('startup failures stop after three attempts and expose only fixed safe wording',async()=>{
+  let attempts=0,disposed=0;const waits=[];
+  await assert.rejects(startAccount(()=>{attempts++;return {dispose(){disposed++;},async start(){throw Error('dummy internal detail');}};},new AbortController().signal,async ms=>{waits.push(ms);}),/^Error: Sign-in could not connect\. Please try again\.$/);
+  assert.equal(attempts,3);assert.equal(disposed,3);assert.deepEqual(waits,[300,1000]);
+});
+
+test('leaving during pending startup disposes it once and never publishes or starts another attempt',async()=>{
+  const lifetime=new AbortController();let release,attempts=0,disposed=0;
+  const pending=startAccount(()=>{attempts++;return {dispose(){disposed++;},start:()=>new Promise(resolve=>{release=resolve;})};},lifetime.signal,async()=>{});
+  lifetime.abort();release('old client');assert.equal(await pending,undefined);assert.equal(attempts,1);assert.equal(disposed,1);
+});
+
+test('an exposed but denied browser lock uses isolated tab storage instead of blocking sign-in',async()=>{
+  for(const name of ['SecurityError','NotSupportedError']){
+    const lock=await supportedBrowserSessionLock({request:async()=>{throw new DOMException('fixture capability denial',name);}});
+    assert.equal(lock,undefined);
+    const local=memoryStorage(),saved=createAccountPersistence({url:'https://capabilityfixture.supabase.co',persistent:local,temporary:memoryStorage(),sharedLock:lock});
+    assert.equal(saved.mode,'tab');await saved.beginSignIn(true);assert.equal(local.data.size,0);saved.dispose();
+  }
+});
+
+test('browser lock capability preserves unexpected failures instead of allowing unlocked durable sessions',async()=>{
+  await assert.rejects(supportedBrowserSessionLock({request:async()=>{throw Error('fixture unexpected lock failure');}}),/fixture unexpected/);
+  let acquired=0;const lock=await supportedBrowserSessionLock({request:async(_name,_options,work)=>{acquired++;return work({});}});
+  assert.equal(typeof lock,'function');assert.equal(acquired,1);
+});
+
+test('browser suspension before a lock grant is retryable, but an abort inside the granted work is preserved',async()=>{
+  const lock=browserSessionLock({request:async()=>{throw new DOMException('fixture suspended','AbortError');}});
+  for(const wait of [0,5000])await assert.rejects(lock('fixture',wait,async()=>assert.fail('No lock was granted')),error=>error.isAcquireTimeout===true);
+  const granted=browserSessionLock({request:async(_name,_options,work)=>work({})});
+  const failure=new DOMException('fixture task aborted','AbortError');
+  await assert.rejects(granted('fixture',5000,async()=>{throw failure;}),error=>error===failure&&!error.isAcquireTimeout);
 });
 
 test('the real SDK preserves PKCE in the same tab across the provider redirect and consumes it on exchange',{timeout:10000},async t=>{

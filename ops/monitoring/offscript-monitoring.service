@@ -9,6 +9,13 @@ RemainAfterExit=yes
 Environment=DOCKER_HOST=unix:///run/user/1000/docker.sock
 Environment=DOCKER_CONFIG=/home/rog/dev/monitoring/empty-docker-config
 ExecStart=/usr/bin/docker compose -p offscript-monitoring -f /home/rog/dev/monitoring/v1/compose.yml up -d --pull never
+# Reapply swap after creation: this rootless engine can initially report the
+# requested value while leaving memory.swap.max unlimited. Verify the kernel.
+ExecStartPost=/usr/bin/docker update --cpus 0.15 --pids-limit 96 --memory 256m --memory-swap 256m offscript-monitor-grafana
+ExecStartPost=/usr/bin/docker update --cpus 0.10 --pids-limit 96 --memory 192m --memory-swap 192m offscript-monitor-prometheus
+ExecStartPost=/usr/bin/docker update --cpus 0.03 --pids-limit 96 --memory 48m --memory-swap 48m offscript-monitor-exporter
+ExecStartPost=/usr/bin/docker update --cpus 0.03 --pids-limit 32 --memory 48m --memory-swap 48m offscript-monitor-proxy
+ExecStartPost=/usr/bin/python3 -B /home/rog/dev/monitoring/v1/verify-bounds.py --enforce-swap
 ExecStop=/usr/bin/docker compose -p offscript-monitoring -f /home/rog/dev/monitoring/v1/compose.yml stop
 TimeoutStartSec=90
 TimeoutStopSec=30

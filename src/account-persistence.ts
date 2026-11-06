@@ -263,10 +263,26 @@ export function guardedAccountReader(auth:AuthReader,persistence:AccountPersiste
 export function browserSessionLock(manager:LockManager):SessionLock {
   return async(name,wait,work)=>{
     const timeoutError=()=>Object.assign(Error('Sign-in storage is busy. Please try again.'),{isAcquireTimeout:true});
-    if(wait===0)return manager.request(name,{mode:'exclusive',ifAvailable:true},async value=>{if(!value)throw timeoutError();return work();});
+    let acquired=false;
+    const interrupted=(error:unknown)=>!acquired&&error instanceof Error&&error.name==='AbortError';
+    if(wait===0){
+      try{return await manager.request(name,{mode:'exclusive',ifAvailable:true},async value=>{if(!value)throw timeoutError();acquired=true;return work();});}
+      catch(error){if(interrupted(error))throw timeoutError();throw error;}
+    }
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),wait<0?10000:wait);
-    try{return await manager.request(name,{mode:'exclusive',signal:controller.signal},async()=>work());}
-    catch(error){if(controller.signal.aborted)throw timeoutError();throw error;}
+    try{return await manager.request(name,{mode:'exclusive',signal:controller.signal},async()=>{acquired=true;return work();});}
+    catch(error){if((!acquired&&controller.signal.aborted)||interrupted(error))throw timeoutError();throw error;}
     finally{clearTimeout(timer);}
   };
+}
+
+export async function supportedBrowserSessionLock(manager:LockManager){
+  const lock=browserSessionLock(manager);
+  try{await lock('offscript.auth-capability.v1',1000,async()=>{});return lock;}
+  catch(error){
+    // Some browsers expose the property but deny its use. Keep the existing
+    // isolated tab-storage fallback; never use durable storage without a lock.
+    if(error instanceof Error&&['SecurityError','NotSupportedError'].includes(error.name))return undefined;
+    throw error;
+  }
 }

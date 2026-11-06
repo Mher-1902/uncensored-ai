@@ -2,6 +2,13 @@
 
 Updated November 6, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
 
+## November 6 phone sign-in startup correction
+
+- Owner screenshot shows “Sign-in is unavailable” on canonical Safari before pressing GitHub. This is distinct from an OAuth rejection. Reproduction with the pinned real SDK showed that a rejected initialization promise stays rejected; reusing that client cannot recover. The full Supabase client also starts an unrelated auth subscription during construction, which can produce an unhandled rejection in the same failure case.
+- The account hook now uses the SDK's exported AuthClient directly, explicitly initializes it before subscribing/publishing provider controls, and disposes/recreates failed attempts with bounded retries. Saved credentials, account fencing, the rolling inactivity rule and temporary chats are preserved. Browser capability denial retains the isolated tab fallback; no unlocked durable storage is introduced. Return/reconnect or “Try again” can recover a failed startup without reloading or erasing a typed draft. Actual physical phone behavior still requires owner confirmation after release.
+- Samsung final application validation passed both builds, both SEO checks, 212 Node tests, the Python suite and 15 focused real-SDK tests at peak 67°C. No model request was sent. Release remains gated on the PR checks and fresh browser verification.
+- Kernel commissioning found initial Docker resource metadata was insufficient: three monitor scopes initially allowed swap. Reapplying all budgets verified their actual scope limits. A post-start kernel verifier and complete budget updates now protect future monitor starts. Only monitor resources were touched; production app/model identities and start times stayed unchanged.
+
 ## November 6 private operations dashboard
 
 - The owner-requested free Samsung dashboard is installed at `https://offscript-samsung-1.tail8c9a09.ts.net:8443/`, requiring the existing Tailscale network. Grafana is a read-only Viewer behind a loopback Caddy proxy; Prometheus and its sanitized textfile exporter stay internal. The existing public 443 chat route and private 22 SSH route were verified unchanged, with no monitor Funnel entry. Four bounded monitoring containers and two user units run independently of the Mac. No application/model container restart occurred.
