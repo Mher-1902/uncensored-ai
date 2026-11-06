@@ -1,6 +1,7 @@
 // Engine-specific template, token accounting and request-state cleanup stay here.
 // A future vLLM adapter must implement these operations rather than emulate slots.
 import {chunkedAnswer} from './chunked-answer.mjs';
+import {withReplyStyle} from './reply-style.mjs';
 export class EngineError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
@@ -26,6 +27,7 @@ export function createLlamaEngine({origin, fetchImpl = fetch, contextTokens = 40
       return false;
     },
     async prepare({messages, maxTokens, mode, continuation = false}, signal) {
+      messages = withReplyStyle(messages);
       const reasoning = mode === 'deep';
       const continuationOptions = continuation ? {continue_final_message: 'content', add_generation_prompt: false} : {};
       const headers = {'Content-Type': 'application/json'};

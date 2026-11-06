@@ -2,6 +2,11 @@
 
 Updated November 6, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
 
+## November 6 concise default replies
+
+- Owner confirmed that phone sign-in now works after PR75, then reported an overlong menu-like answer to the greeting “yo.” Add a short trusted response preference: brief and direct by default, one short greeting for greetings, detail when asked or required for a complete task. Preserve requested code/steps and the full-answer/continuation contract; do not silently truncate or lower token ceilings.
+- Final short policy passed four fixed actual-model samples with natural stops at peak 70°C: short greeting, arithmetic, requested explanation and complete code. Samsung application validation passed both builds/SEO and all 213 Node tests plus the Python suite at peak 65°C. Gateway image validation/deployment remains required. - Validate on the actual selected model with fixed greeting, simple factual, requested detail and code samples before deployment. Prior broad guidance increased latency and did not solve general model quality; this is a separate narrow style experiment. Carry any accepted policy through the staged Rust adapter before its eventual release.
+
 ## November 6 phone sign-in startup correction
 
 - Owner screenshot shows “Sign-in is unavailable” on canonical Safari before pressing GitHub. This is distinct from an OAuth rejection. Reproduction with the pinned real SDK showed that a rejected initialization promise stays rejected; reusing that client cannot recover. The full Supabase client also starts an unrelated auth subscription during construction, which can produce an unhandled rejection in the same failure case.
