@@ -122,7 +122,7 @@ export function App(){
             {busy?<button key="stop" type="button" className="send" onClick={stop} aria-label="Stop response"><Square size={18} fill="currentColor"/></button>:<button key="send" type="submit" className="send" disabled={!draft.trim()||!config||account.loading||signingOut} aria-label="Send message"><ArrowUp size={22}/></button>}
           </div>
         </form>
-        <div className="under-composer"><span>Close or reload this page to clear your chat.</span><a className="privacy-link" href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Privacy</a><button className="privacy-link" type="button" onClick={()=>setCookiesOpen(true)}>Cookies</button><span className="keyboard">↵ send <b>·</b> ⇧ ↵ new line</span></div>
+        <div className="under-composer"><span className="accuracy-note">OffScript is an AI and can make mistakes. Check important information.</span><span>Close or reload this page to clear your chat.</span><a className="privacy-link" href={PRIVACY_PATH} target="_blank" rel="noopener noreferrer">Privacy</a><button className="privacy-link" type="button" onClick={()=>setCookiesOpen(true)}>Cookies</button><span className="keyboard">↵ send <b>·</b> ⇧ ↵ new line</span></div>
       </div>
     </main>
     <CookieNotice onDetails={()=>setCookiesOpen(true)} onDismiss={()=>input.current?.focus()}/>
