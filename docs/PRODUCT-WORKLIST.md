@@ -2,6 +2,13 @@
 
 Updated November 6, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
 
+## November 6 private operations dashboard
+
+- The owner-requested free Samsung dashboard is installed at `https://offscript-samsung-1.tail8c9a09.ts.net:8443/`, requiring the existing Tailscale network. Grafana is a read-only Viewer behind a loopback Caddy proxy; Prometheus and its sanitized textfile exporter stay internal. The existing public 443 chat route and private 22 SSH route were verified unchanged, with no monitor Funnel entry. Four bounded monitoring containers and two user units run independently of the Mac. No application/model container restart occurred.
+- The collector reports host/container/queue numbers only. No Docker socket is mounted into any monitoring container; no chats, prompts, answers, identifiers, credentials or raw app logs are collected. Five isolated collector boundary tests passed. Runtime configuration and a fresh metric query passed; The Mac renders real host/container graphs. A final startup tuning and supported 30-second dashboard refresh are recorded in source; sustained resource checks remain part of commissioning. See `ops/monitoring/README.md`.
+- Mac Docker context `offscript-samsung` now uses the existing private SSH connection and lists the Samsung containers. `desktop-linux` remains the Mac default. Docker Desktop's local engine remains empty; the remote visual view is the private Grafana dashboard.
+- Private inference benchmark/build harnesses must explicitly verify the four exact monitor names, limits and identities before accepting the expanded baseline. Do not loosen an exact three-container guard to arbitrary background workloads.
+
 ## November 6 validation
 
 - The owner confirmed repeated sign-in on the canonical `offscript-ai.vercel.app`, in both phone browser and home-screen app. Explicit `pageshow`/online restoration now uses the existing Supabase SDK and epoch/account guard; transient recovery failure preserves credentials. The small accuracy note is added. Samsung offline validation passed both builds, both SEO checks, 205 Node tests and existing Python tests at peak 56°C; no production model request was sent. Release and physical device checks remain separate.

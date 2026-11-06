@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: Offscript
+    orgId: 1
+    folder: Offscript
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/offscript-dashboards

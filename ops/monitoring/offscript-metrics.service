@@ -1,0 +1,15 @@
+[Unit]
+Description=Offscript content-free Samsung metrics
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -B /home/rog/dev/monitoring/v1/collect.py --output /home/rog/dev/monitoring/textfile/offscript.prom
+CPUQuota=5%
+MemoryMax=64M
+MemorySwapMax=0
+TasksMax=24
+TimeoutStartSec=18
+NoNewPrivileges=yes
+UMask=0077
+StandardOutput=null
+StandardError=journal

@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Samsung metrics every 20 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=20s
+AccuracySec=2s
+Unit=offscript-metrics.service
+
+[Install]
+WantedBy=timers.target
