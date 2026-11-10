@@ -6,7 +6,7 @@
     "node": "24.x"
   },
   "dependencies": {
-    "@vercel/functions": "3.10.1",
+    "@vercel/functions": "3.11.0",
     "hono": "4.13.17",
     "jose": "6.2.15",
     "pg": "8.23.1"
