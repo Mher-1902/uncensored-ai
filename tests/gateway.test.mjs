@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {createGateway,validateRequest} from '../server/index.mjs';
 import {readEvents} from '../src/stream.ts';
+import {withReplyStyle} from '../server/reply-style.mjs';
 
 const input={messages:[{role:'user',content:'Hello'}],maxTokens:256,reasoned:false};
 const headers={'Content-Type':'application/json','X-Offscript-Client':'web',Origin:'https://offscript.test'};
@@ -328,7 +329,7 @@ test('template accounting and generation use the same assistant continuation con
   const template=app.calls.find(c=>c.path==='/apply-template').body;
   const generation=app.calls.find(c=>c.path==='/v1/chat/completions').body;
   for(const body of [template,generation]){
-    assert.deepEqual(body.messages,messages);
+    assert.deepEqual(body.messages,withReplyStyle(messages));
     assert.equal(body.continue_final_message,'content');assert.equal(body.add_generation_prompt,false);
     assert.equal(body.chat_template_kwargs.enable_thinking,false);
   }

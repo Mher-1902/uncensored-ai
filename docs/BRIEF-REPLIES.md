@@ -1,0 +1,9 @@
+# Brief replies by default
+
+The owner reported an irrelevant, overlong response to “yo.” Add one short trusted response preference before model template rendering: brief answers and one-line greetings by default, with requested detail and complete code. It does not lower token allowances, truncate output, suppress context or remove continuations. The system turn is included in both token accounting and generation, retained only once through internal chunks, and never displayed as a user message. Public clients still cannot send system turns.
+
+A fixed private comparison on the exact selected model, template and Fast sampler tested greetings, simple arithmetic, three requested DNS sentences and a requested Python function. With the final short instruction, all four samples finished naturally: “Yo! What's up?” (7 tokens), “4” (2 tokens), three DNS sentences (68 tokens), and complete code (24 tokens). No generated code was executed. Peak 70°C; live containers were unchanged and the private model was removed. The longer draft also passed but had more prompt-processing overhead and is excluded.
+
+This is a small style check, not broad model-quality or capacity proof. The final greeting took 5.79 seconds to first text and 7.45 seconds total; a seeded baseline greeting was already short and took 2.66/6.34 seconds. Do not claim faster decoding: the instruction adds prompt processing. It aims to avoid unnecessary long output on the public CPU.
+
+Deployment requires the tested Samsung gateway change; a Vercel-only frontend deployment does not activate this behavior. Preserve model/ingress, exclusive slots, cleanup and rollback. Carry this accepted preference into the staged Rust engine before that engine is released. Requested long answers and complete code remain supported within the existing model/context limits.

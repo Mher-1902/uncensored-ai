@@ -4,6 +4,7 @@ import {once} from 'node:events';
 import {createLlamaEngine} from '../server/llama-engine.mjs';
 import {createGateway} from '../server/index.mjs';
 import {readEvents} from '../src/stream.ts';
+import {DEFAULT_REPLY_STYLE,withReplyStyle} from '../server/reply-style.mjs';
 
 function fixture(chunks,options={}) {
   const calls=[],controls=[];let templates=0,generations=0;
@@ -49,7 +50,8 @@ test('one request reuses only its exact unfinished prefix and aggregates unique 
   const events=await answer(f),requests=generations(f);
   assert.equal(requests.length,2);assert.deepEqual(requests.map(r=>r.max_tokens),[2,2]);
   assert.ok(requests.every(r=>r.cache_prompt===true&&r.id_slot===0&&r.chat_template_kwargs.enable_thinking===false));
-  assert.deepEqual(requests[1].messages,[...input.messages,{role:'assistant',content:'Code:\n  '}]);
+  assert.deepEqual(requests[1].messages,[...withReplyStyle(input.messages),{role:'assistant',content:'Code:\n  '}]);
+  assert.equal(requests[1].messages.filter(message=>message.role==='system').length,1);
   assert.equal(requests[1].continue_final_message,'content');assert.equal(requests[1].add_generation_prompt,false);
   assert.deepEqual(events.at(-2),{choices:[{delta:{},finish_reason:'stop'}],usage:{prompt_tokens:10,completion_tokens:3,total_tokens:13}});
   assert.equal(events.at(-1),'[DONE]');
@@ -118,6 +120,19 @@ test('Stop during cached generation clears the exclusive slot before another use
   assert.ok(queued);assert.equal(generations(f).length,2);
   controller.abort();await cancelled;
   const text=await (await second).text();assert.match(text,/"content":"C"/);assert.match(text,/workerStopped":true/);assert.match(text,/\[DONE\]/);
-  assert.equal(generations(f)[2].messages.length,1);
+  assert.deepEqual(generations(f)[2].messages,withReplyStyle(input.messages));
   assert.deepEqual(f.calls.filter(c=>c.path.startsWith('/slots/')||c.path==='/v1/chat/completions').map(c=>c.path),['/slots/0','/v1/chat/completions','/v1/chat/completions','/slots/0','/slots/0','/v1/chat/completions','/slots/0']);
+});
+
+test('brief style leaves user input intact and is counted in the same template used for generation',async()=>{
+  const f=fixture([{text:'Hi.',tokens:1,finish:'stop'}]);
+  const messages=[{role:'user',content:'yo'}],original=structuredClone(messages);
+  await answer(f,{...input,messages});
+  const template=f.calls.find(call=>call.path==='/apply-template').body;
+  const generation=generations(f)[0];
+  assert.deepEqual(messages,original);
+  assert.deepEqual(template.messages,[{role:'system',content:DEFAULT_REPLY_STYLE},...original]);
+  assert.deepEqual(generation.messages,template.messages);
+  const tokenized=f.calls.find(call=>call.path==='/tokenize').body;
+  assert.ok(tokenized.content.includes(DEFAULT_REPLY_STYLE));
 });
