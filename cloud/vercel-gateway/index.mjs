@@ -3,10 +3,12 @@ import {Hono} from 'hono';
 import {forward, json, routeRequest, bodyJSON} from './proxy.mjs';
 import {accountControlEnabled,accountFailure,createAccountStore} from './account-store.mjs';
 import {admittedChat,cancelAdmittedAnswer} from './admission.mjs';
+import {createHealthFetch} from './health-fetch.mjs';
 
 export function createBridge({env = process.env, fetchImpl = fetch, verify, accountStore, defer} = {}) {
   let verifier, configuredFor;
   const store=accountStore || createAccountStore({env});
+  const healthFetch=createHealthFetch(fetchImpl);
   return async request => {
     const path = new URL(request.url).pathname;
     if (!['/api/health', '/api/chat', '/api/account', '/api/acceptance','/api/answer/cancel'].includes(path)) return json(404, {error: 'API route not found.'});
@@ -53,7 +55,8 @@ export function createBridge({env = process.env, fetchImpl = fetch, verify, acco
     }
     // User JWTs stay at this boundary. The Samsung receives only its service credential.
     return forward(request, `${env.SAMSUNG_API_ORIGIN}/`, path.slice(1), {
-      fetchImpl, timeoutMs: path === '/api/health' ? 5000 : 270000,
+      fetchImpl: path === '/api/health' ? healthFetch : fetchImpl,
+      timeoutMs: path === '/api/health' ? 15000 : 270000,
       headers: {'X-Offscript-Client': 'web', Authorization: `Bearer ${samsungToken}`},
     });
   };

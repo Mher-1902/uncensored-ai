@@ -50,7 +50,8 @@ async function cloudReply(space:string,messages:Message[],length:number,signal:A
 }
 
 export async function checkModel(config:SiteConfig):Promise<boolean>{
-  if(config.apiBase){try{const r=await fetch(`${config.apiBase}/health`,{cache:'no-store',signal:AbortSignal.timeout(8000)});return r.ok&&(await r.json()).ready===true}catch{return false}}
+  // The bridge allows two bounded connection attempts; leave time for both hops.
+  if(config.apiBase){try{const r=await fetch(`${config.apiBase}/health`,{cache:'no-store',signal:AbortSignal.timeout(20000)});return r.ok&&(await r.json()).ready===true}catch{return false}}
   return Boolean(config.space);
 }
 // Each segment has its own request deadline. The next segment continues the
