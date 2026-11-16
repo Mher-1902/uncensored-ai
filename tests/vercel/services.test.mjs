@@ -7,6 +7,7 @@ import {createAppHandler} from '../../cloud/vercel-api/handler.mjs';
 import {forward} from '../../cloud/vercel-gateway/proxy.mjs';
 import configHandler from '../../cloud/vercel-api/index.mjs';
 import {publicConfig} from '../../cloud/vercel-api/config.mjs';
+import {createHealthFetch} from '../../cloud/vercel-gateway/health-fetch.mjs';
 const require = createRequire(new URL('../../cloud/vercel-gateway/package.json', import.meta.url));
 const {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} = await import(require.resolve('jose'));
 
@@ -107,6 +108,49 @@ test('bridge forwards readiness only and never routes model administration',asyn
   let calls=0;const bridge=createBridge({env,verify:async()=>{},fetchImpl:async(url)=>{calls++;assert.equal(url.pathname,'/api/health');return Response.json({ready:true,queued:0,busy:false});}});
   const health=await bridge(new Request('https://internal.test/api/health'));assert.deepEqual(await health.json(),{ready:true,queued:0,busy:false});
   assert.equal((await bridge(new Request('https://internal.test/slots/0'))).status,404);assert.equal(calls,1);
+});
+test('a readiness response after the old five-second cutoff survives both forwarding hops',{timeout:10000},async()=>{
+  const bridge=createBridge({env,fetchImpl:async(_url,options)=>new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>resolve(Response.json({ready:true})),6000);
+    options.signal.addEventListener('abort',()=>{clearTimeout(timer);reject(options.signal.reason)},{once:true});
+  })});
+  const app=createAppHandler('/api/health',{env:{GATEWAY_URL:'https://internal.test'},fetchImpl:(url,options)=>bridge(new Request(url,options))});
+  const response=await app(new Request('https://app.test/api/health'));
+  assert.equal(response.status,200);assert.deepEqual(await response.json(),{ready:true});
+});
+test('only readiness retries a transport failure; model requests are never replayed',async()=>{
+  const paths=[];
+  const bridge=createBridge({env,verify:async()=>{},fetchImpl:async(url)=>{
+    paths.push(url.pathname);
+    if(paths.length===2)return Response.json({ready:true});
+    throw Error('private connection diagnostics');
+  }});
+  const response=await bridge(new Request('https://internal.test/api/health'));
+  assert.equal(response.status,200);assert.deepEqual(await response.json(),{ready:true});
+  const chat=await bridge(request());assert.equal(chat.status,503);
+  assert.deepEqual(paths,['/api/health','/api/health','/api/chat']);
+  assert.doesNotMatch(await chat.text(),/private connection diagnostics/);
+});
+test('probe retries stop at two attempts and preserve cancellation and genuine not-ready responses',async()=>{
+  const url=new URL('https://server.test/api/health');
+  let attempts=0;
+  const waiting=createHealthFetch(async(_url,{signal})=>new Promise((_resolve,reject)=>{
+    attempts++;signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
+  }),{attemptTimeoutMs:20});
+  // Keep this short synthetic timer alive while AbortSignal's timer is unref'd.
+  const keepAlive=setTimeout(()=>{},500);
+  try {
+    await assert.rejects(waiting(url,{method:'GET',signal:new AbortController().signal}));
+    assert.equal(attempts,2);
+    const cancelled=new AbortController();attempts=0;
+    const operation=waiting(url,{method:'GET',signal:cancelled.signal});cancelled.abort();
+    await assert.rejects(operation);assert.equal(attempts,1);
+    attempts=0;
+    const offline=createHealthFetch(async()=>{attempts++;return Response.json({ready:false},{status:503})});
+    const response=await offline(url,{method:'GET',signal:new AbortController().signal});
+    assert.equal(response.status,503);assert.deepEqual(await response.json(),{ready:false});assert.equal(attempts,1);
+    await assert.rejects(offline(url,{method:'POST',signal:new AbortController().signal}));assert.equal(attempts,1);
+  } finally {clearTimeout(keepAlive)}
 });
 test('signed Supabase sessions require the exact issuer, audience, role, expiry and signing key',async()=>{
   const {privateKey,publicKey}=await generateKeyPair('ES256');
