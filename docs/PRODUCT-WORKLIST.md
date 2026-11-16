@@ -1,11 +1,18 @@
 # Product worklist
 
-Updated November 6, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+Updated November 15, 2026. This file is the persistent work queue. Record new owner requests here while implementation continues; do not silently drop or restart existing work. Address the current release blockers first, then queued additions. Mark a task complete only with source, test and release evidence.
+
+## November 15 release and repository cleanup
+
+- PR76 is merged as `98039e9`. The short trusted response preference is now active in Samsung gateway image `sha256:389aeef0510d76de68a8538ba085fdc7a33d1f239290612effffc31d397ef679`. All 38 synthetic gateway/chunk checks passed inside that actual image; existing application checks passed. The idle gateway-only cutover preserved model, ingress and monitor identities, credentials and actual CPU/memory/no-swap/PID limits. Startup persistence is installed. Public website/readiness returned 200, unsigned chat returned 401, and private Grafana was healthy. This is a style improvement, not a faster-decoding claim; requested detail and complete code remain supported.
+- PR75 is released and the owner confirmed phone sign-in works. Physical iPad reopening is still unverified. Monitoring is installed privately on the Samsung; the Mac Docker SSH context works, while Docker Desktop's native Containers page continues to show its local engine.
+- Owner requests roughly four or five active GitHub branches and current, working `main`. Inventory/backup precede branch deletion. Retired unmerged experiments retain exact archive tags, dependency proposals consolidate on one review branch, and already-included historical PRs close. See `REPOSITORY-WORKFLOW.md`. Preserve existing local worktrees and uncommitted changes.
+- Rust PR66 remains a draft candidate and is not deployed. Canonical packaging, long continuation, Deep Think thermal/reliability, matched timing/memory and idle cutover/rollback gates remain open. Carry the accepted brief-response instruction into Rust before eventual release. Raw speed, broad answer quality, full account lifecycle and 50,000-user capacity remain unfinished.
 
 ## November 6 concise default replies
 
 - Owner confirmed that phone sign-in now works after PR75, then reported an overlong menu-like answer to the greeting “yo.” Add a short trusted response preference: brief and direct by default, one short greeting for greetings, detail when asked or required for a complete task. Preserve requested code/steps and the full-answer/continuation contract; do not silently truncate or lower token ceilings.
-- Final short policy passed four fixed actual-model samples with natural stops at peak 70°C: short greeting, arithmetic, requested explanation and complete code. Samsung application validation passed both builds/SEO and all 213 Node tests plus the Python suite at peak 65°C. Gateway image validation/deployment remains required. - Validate on the actual selected model with fixed greeting, simple factual, requested detail and code samples before deployment. Prior broad guidance increased latency and did not solve general model quality; this is a separate narrow style experiment. Carry any accepted policy through the staged Rust adapter before its eventual release.
+- Final short policy passed four fixed actual-model samples with natural stops at peak 70°C: short greeting, arithmetic, requested explanation and complete code. Samsung application validation passed both builds/SEO and all 213 Node tests plus the Python suite at peak 65°C. Gateway image validation and deployment completed November 15 as recorded above. Prior broad guidance increased latency and did not solve general model quality; this is a separate narrow style experiment. Carry the accepted policy through the staged Rust adapter before its eventual release.
 
 ## November 6 phone sign-in startup correction
 
