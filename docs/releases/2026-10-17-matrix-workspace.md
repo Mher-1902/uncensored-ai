@@ -2,7 +2,7 @@
 
 Live website: https://offscript-ai.vercel.app/
 
-Source: `39646ec511e7c3097dfd5d3fdede6dec1552d62f`, branch `codex/matrix-workspace`, PR #17. Production deployment: `BiDfRL4LQKCatvTtfRaa24LdHmgf` in the existing Vercel project. The source was rebuilt with the existing **Production** settings; a Preview build with different environment variables was not simply promoted.
+Source: `39646ec511e7c3097dfd5d3fdede6dec1552d62f`, PR #17. Production deployment: `BiDfRL4LQKCatvTtfRaa24LdHmgf` in the existing Vercel project. The source was rebuilt with the existing **Production** settings; a Preview build with different environment variables was not simply promoted.
 
 The release replaces the large anonymous figure and decorative scroll motion with a small Aralez mark, charcoal surfaces and green monospace responses. Fast is the default and Deep Think is explicit. Stop/Copy/Clear remain, with an accessible mobile Clear control. Per-visitor 30-second readiness polling is removed.
 
