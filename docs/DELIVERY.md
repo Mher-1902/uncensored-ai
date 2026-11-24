@@ -8,7 +8,7 @@ Current account limitation, checked October 13, 2026: GitHub returned HTTP 403 f
 
 ## October 19 integration candidate
 
-`codex/pilot-integration` preserves reviewed commit history while combining staged account source `d23180f`, the live first-answer recovery source `25c605d` and CPU profile `88dfa0f`. Review the merge resolutions, run the Samsung application/Docker/database/combined-stack checks and verify the installed migration hashes before merging its main PR. Do not replay obsolete UI releases or re-run migration 001 merely to close the stacked PR backlog.
+The pilot integration branch preserves reviewed commit history while combining staged account source `d23180f`, the live first-answer recovery source `25c605d` and CPU profile `88dfa0f`. Review the merge resolutions, run the Samsung application/Docker/database/combined-stack checks and verify the installed migration hashes before merging its main PR. Do not replay obsolete UI releases or re-run migration 001 merely to close the stacked PR backlog.
 
 Vercel publication and the manual Samsung workflow are separate operations. Confirm the configured production branch, Production environment and provider automation before a main merge. The integration is intended to ship with `PILOT_ACCOUNT_CONTROL` absent or `false`, the restricted runtime still NOLOGIN, and draft policies unpublished. The old backend workflow must not be dispatched as an incidental part of updating main. A later protocol-5 native rollout needs its own exact-image/cleanup checks and rollback; enabling account admission requires all gates in [ACCOUNT-CONTROL.md](ACCOUNT-CONTROL.md).
 
