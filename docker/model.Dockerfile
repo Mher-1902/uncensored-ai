@@ -8,12 +8,14 @@ RUN revision=$(python3 -c 'import json,re; v=json.load(open("/tmp/model.json"))[
     && git -C /opt/llama checkout --detach "$revision" \
     && test "$(git -C /opt/llama rev-parse HEAD)" = "$revision"
 # Samsung Ivy Bridge: AVX/F16C, no AVX2/FMA/BMI2. One compiler worker.
+# Offscript supplies the UI; the model container only serves the API.
 RUN cmake -S /opt/llama -B /opt/llama/build -DCMAKE_BUILD_TYPE=Release \
     -DGGML_NATIVE=OFF -DGGML_CPU_ALL_VARIANTS=OFF \
     -DGGML_AVX=ON -DGGML_F16C=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_BMI2=OFF \
     -DGGML_AVX512=OFF -DGGML_AVX512_VBMI=OFF -DGGML_AVX512_VNNI=OFF -DGGML_AVX512_BF16=OFF -DGGML_AVX_VNNI=OFF \
     -DGGML_BLAS=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF \
     -DLLAMA_CURL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
+    -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF \
     && cmake --build /opt/llama/build --target llama-server --parallel 1
 
 FROM registry.fedoraproject.org/fedora:44@sha256:959833699a2fb5da1bc70b4db659ab229252c2ba1ed8e2fa29d4b30a704c0f63
