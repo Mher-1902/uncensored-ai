@@ -123,7 +123,7 @@ Production interaction testing caught a Stop-to-Send DOM reuse race: after Stop,
 
 ## October 19 integration branch
 
-`codex/pilot-integration` combines staged source `d23180f`, the live reply-recovery/Stop source `25c605d` and CPU profile `88dfa0f` through merge commits. It preserves the exact installed migrations and NOLOGIN administrator script. Protocol-5 preparation, bounded final tokens and logical receipts coexist with the current retry/draft outcomes and the bounded new-question queue. A retry checks the original mode's allowance; it does not use a subsequently changed selector.
+The pilot integration branch combines staged source `d23180f`, the live reply-recovery/Stop source `25c605d` and CPU profile `88dfa0f` through merge commits. It preserves the exact installed migrations and NOLOGIN administrator script. Protocol-5 preparation, bounded final tokens and logical receipts coexist with the current retry/draft outcomes and the bounded new-question queue. A retry checks the original mode's allowance; it does not use a subsequently changed selector.
 
 This branch is a release candidate, not deployed evidence. Run Samsung application/Docker/database/combined-stack checks and review the main PR before publishing it. `PILOT_ACCOUNT_CONTROL` remains off by default; the runtime remains NOLOGIN without a password, policy links remain empty and drafts remain unpublished. A main merge must not silently activate database access, the old backend deployment workflow or a new model. Preserve the existing Production release for rollback and confirm provider automation before merging.
 
